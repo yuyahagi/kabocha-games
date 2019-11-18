@@ -1,10 +1,19 @@
 'use strict'
 
-function getCanvas() {
-    let app = new PIXI.Application({ width: 256, height: 256 });
-    return app.view;
-}
+function initScreen() {
+    let app = new PIXI.Application({ width: 640, height: 480 });
 
-let app = new PIXI.Application({ width: 256, height: 256 });
-app.renderer.backgroundColor = 0x061639;
-document.body.appendChild(app.view);
+    PIXI.Loader.shared
+        .add([
+            "images/obake.png",
+            "images/obake_kage.png"
+        ])
+        .load(() => {
+            let obake = new PIXI.Sprite(PIXI.Loader.shared.resources["images/obake.png"].texture);
+            app.stage.addChild(obake);
+        });
+
+    // let mainDiv = document.getElementById('main');
+    // mainDiv.appendChild(app.view);
+    document.body.appendChild(app.view);
+}

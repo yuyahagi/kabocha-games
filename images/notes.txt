@@ -1,0 +1,13 @@
+halloween characters: https://pipoya.net/sozai/download/%e3%83%8f%e3%83%ad%e3%82%a6%e3%82%a3%e3%83%b3%e3%82%ad%e3%83%a3%e3%83%a9%e3%83%81%e3%83%83%e3%83%97-zip
+  dekakabocha.png
+  dekakabocha_kage.png
+  hone.png
+  kabocha.png
+  kabocha_kage.png
+  koumori.png
+  koumori_kage.png
+  majo.png
+  majo_kage.png
+  obake.png
+  obake_kage.png
+
