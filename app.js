@@ -2,6 +2,7 @@
 
 let app = new PIXI.Application({ width: 640, height: 480 });
 let obake;
+let state = play;
 
 function initScreen() {
     app.loader
@@ -26,12 +27,34 @@ function setup(loader, resources) {
     obake.scale.set(2, 2);
     obake.rotation = 0.1;
 
-    app.stage.addChild(obake);
-    app.renderer.render(app.stage);
+    obake.vx = 0;
+    obake.vy = 0;
     
+    app.stage.addChild(obake);
+    
+    // Capture keyboard arrow keys.
+    let left = keyboard("ArrowLeft"),
+        up = keyboard("ArrowUp"),
+        right = keyboard("ArrowRight"),
+        down = keyboard("ArrowDown");
+    
+    left.press = () => { obake.vx -= 1; }
+    up.press = () => { obake.vy -= 1; }
+    right.press = () => { obake.vx += 1; }
+    down.press = () => { obake.vy += 1; }
+    // left.release = () => { obake.vx = 0; obake.vy = 0 }
+    // up.release = () => { obake.vx = 0; obake.vy = 0 }
+    // right.release = () => { obake.vx = 0; obake.vy = 0 }
+    // down.release = () => { obake.vx = 0; obake.vy = 0 }
+
     app.ticker.add(delta => gameLoop(delta));
 }
 
 function gameLoop(delta) {
-    obake.x += 2 + delta;
+    state(delta);
+}
+
+function play(delta) {
+    obake.x += obake.vx * (1 + delta);
+    obake.y += obake.vy * (1 + delta);
 }
