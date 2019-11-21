@@ -2,7 +2,7 @@
 
 let app = new PIXI.Application({ width: 640, height: 480 });
 let maxPumpkinsCount = 10;
-let characters;
+let pumpkins;
 let mainCharacter;
 let state = play;
 
@@ -20,20 +20,29 @@ function initScreen() {
 }
 
 function setup(loader, resources) {
-    mainCharacter = loadSprite("images/obake.png", new PIXI.Rectangle(0, 32, 32, 32));
+    mainCharacter = new PIXI.Container();
+    let obake = loadSprite("images/obake.png", new PIXI.Rectangle(0, 32, 32, 32));
+    mainCharacter.addChild(obake);
+    mainCharacter.position.set(320, 240);
+    mainCharacter.vx = 0;
+    mainCharacter.vy = 0;
+    mainCharacter.omega = 0.2 * 2 * Math.PI / 60;
+    mainCharacter.barrierSprite = null;
     
-    characters = new PIXI.Container();
+    pumpkins = new PIXI.Container();
     addPumpkin();
 
     app.stage.addChild(mainCharacter);
-    app.stage.addChild(characters);
+    app.stage.addChild(pumpkins);
 
     // Capture keyboard arrow keys.
     let left = keyboard("ArrowLeft"),
         up = keyboard("ArrowUp"),
         right = keyboard("ArrowRight"),
         down = keyboard("ArrowDown"),
-        space = keyboard(" ");
+        space = keyboard(" "),
+        keyz = keyboard("z"),
+        keyx = keyboard("x");
     
     let sp = 5;
     left.press = () => { mainCharacter.vx -= sp; }
@@ -44,7 +53,9 @@ function setup(loader, resources) {
     up.release = () => { mainCharacter.vx = 0; mainCharacter.vy = 0 }
     right.release = () => { mainCharacter.vx = 0; mainCharacter.vy = 0 }
     down.release = () => { mainCharacter.vx = 0; mainCharacter.vy = 0 }
-    space.press = () => { addPumpkin(); }
+
+    keyz.press = () => { addPumpkin(); };
+    keyx.press = () => { toggleBarrier(); };
 
     app.ticker.add(delta => gameLoop(delta));
 }
@@ -55,7 +66,6 @@ function loadSprite(imgPath, rectangle) {
     let sprite = new PIXI.Sprite(texture);
 
     sprite.anchor.set(0.5, 0.5);
-    sprite.position.set(320, 240);
     sprite.scale.set(2);
 
     sprite.vx = 0;
@@ -70,10 +80,10 @@ function gameLoop(delta) {
 }
 
 function play(delta) {
-    characters.children.forEach(element => {
+    moveSprite(mainCharacter, delta);
+    pumpkins.children.forEach(element => {
         moveSprite(element, delta, true);
     });
-    moveSprite(mainCharacter, delta);
 
 }
 
@@ -96,7 +106,22 @@ function addPumpkin() {
     newPumpkin.vy = 5 * 2 * (Math.random() - 0.5);
     newPumpkin.omega = -2 * 2 * Math.PI / 180;
 
-    if (characters.children.length >= maxPumpkinsCount)
-        characters.removeChild(characters.children[0]);
-    characters.addChild(newPumpkin); 
+    if (pumpkins.children.length >= maxPumpkinsCount)
+        pumpkins.removeChild(pumpkins.children[0]);
+    pumpkins.addChild(newPumpkin); 
+}
+
+function toggleBarrier() {
+    if (mainCharacter.barrierSprite === null) {
+        let circle = new PIXI.Graphics();
+        mainCharacter.addChild(circle);
+        mainCharacter.barrierSprite = circle;
+
+        circle.lineStyle(5, 0x00ffff, 0.9);
+        circle.drawCircle(0, 0, 48);
+    }
+    else {
+        mainCharacter.removeChild(mainCharacter.barrierSprite);
+        mainCharacter.barrierSprite = null;
+    }
 }
