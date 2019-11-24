@@ -43,6 +43,7 @@ class Character extends PIXI.Container {
 
 let pumpkins;
 let player;
+let input;
 let state = play;
 
 function initScreen() {
@@ -63,32 +64,13 @@ function setup(loader, resources) {
     player.barrierSprite = null;
     
     pumpkins = new PIXI.Container();
-    addPumpkin();
+    for (let i = 0; i < 3; i++)
+        addPumpkin();
 
     app.stage.addChild(player);
     app.stage.addChild(pumpkins);
 
-    // Capture keyboard arrow keys.
-    let left = keyboard("ArrowLeft"),
-        up = keyboard("ArrowUp"),
-        right = keyboard("ArrowRight"),
-        down = keyboard("ArrowDown"),
-        space = keyboard(" "),
-        keyz = keyboard("z"),
-        keyx = keyboard("x");
-    
-    let sp = 5;
-    left.press = () => { player.dx -= sp; }
-    up.press = () => { player.dy -= sp; }
-    right.press = () => { player.dx += sp; }
-    down.press = () => { player.dy += sp; }
-    left.release = () => { player.dx = 0; player.dy = 0 }
-    up.release = () => { player.dx = 0; player.dy = 0 }
-    right.release = () => { player.dx = 0; player.dy = 0 }
-    down.release = () => { player.dx = 0; player.dy = 0 }
-
-    keyz.press = () => { addPumpkin(); };
-    keyx.press = () => { toggleBarrier(); };
+    input = new PlayerInput();
 
     app.ticker.add(delta => gameLoop(delta));
 }
@@ -113,7 +95,8 @@ function gameLoop(delta) {
 }
 
 function play(delta) {
-    moveSprite(player, delta);
+    movePlayer(delta);
+    // moveSprite(player, delta);
 
     let isHit = false;
     pumpkins.children.forEach(element => {
@@ -127,6 +110,22 @@ function play(delta) {
         toggleBarrier(player);
     else
         hideBarrier(player);
+}
+
+function movePlayer(delta) {
+    let sp = 5;
+    player.dx = sp * input.arrowX;
+    player.dy = sp * input.arrowY;
+
+    if (input.keyZ)
+        addPumpkin();
+    
+    moveSprite(player, delta);
+
+    if (player.x < 0) player.x = 0;
+    if (player.x > 640) player.x = 640;
+    if (player.y < 0) player.y = 0;
+    if (player.y > 480) player.y = 480;
 }
 
 function moveSprite(sprite, delta, toBounce = false) {
