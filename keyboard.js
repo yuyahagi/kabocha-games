@@ -2,7 +2,6 @@
 
 class PlayerInput {
     constructor() {
-        console.log('PlayerInput constructor.');
         this.keyPressedLeft = false;
         this.keyPressedUp = false;
         this.keyPressedRight = false;

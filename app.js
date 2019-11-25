@@ -1,7 +1,8 @@
 'use strict'
 
-let app = new PIXI.Application({ width: 640, height: 480 });
+let app;
 let maxPumpkinsCount = 10;
+let maxPumpkinsSpeed = 2.5;
 
 let CharacterImagePaths = {
     ghost: "images/obake.png",
@@ -19,7 +20,7 @@ class Character extends PIXI.Container {
         this.dx = 0;
         this.dy = 0;
         this.omega = 0;
-        this.hp = 1;
+        this.hp = 10;
     }
 
     static isHit(c1, c2) {
@@ -47,6 +48,7 @@ let input;
 let state = play;
 
 function initScreen() {
+    app = new PIXI.Application({ width: 640, height: 480 });
     app.loader
         .add([
             CharacterImagePaths.ghost,
@@ -59,10 +61,20 @@ function initScreen() {
 }
 
 function setup(loader, resources) {
-    player = new Character(CharacterImagePaths.ghost, 320, 240);
+    input = new PlayerInput();
+    initPlay();
+    app.ticker.add(delta => gameLoop(delta));
+}
+
+function initPlay() {
+    while (app.stage.children.length > 0) {
+        app.stage.removeChildAt(app.stage.children.length - 1);
+    }
+
+    player = new Character(CharacterImagePaths.ghost, app.screen.width - 20, app.screen.height / 2);
     player.omega = 0.2 * 2 * Math.PI / 60;
     player.barrierSprite = null;
-    
+
     pumpkins = new PIXI.Container();
     for (let i = 0; i < 3; i++)
         addPumpkin();
@@ -70,9 +82,7 @@ function setup(loader, resources) {
     app.stage.addChild(player);
     app.stage.addChild(pumpkins);
 
-    input = new PlayerInput();
-
-    app.ticker.add(delta => gameLoop(delta));
+    state = play;
 }
 
 function loadSprite(imgPath, rectangle) {
@@ -96,13 +106,13 @@ function gameLoop(delta) {
 
 function play(delta) {
     movePlayer(delta);
-    // moveSprite(player, delta);
 
     let isHit = false;
     pumpkins.children.forEach(element => {
         moveSprite(element, delta, true);
         if (Character.isHit(player, element)) {
             isHit = true;
+            player.hp--;
         }
     });
 
@@ -110,6 +120,10 @@ function play(delta) {
         toggleBarrier(player);
     else
         hideBarrier(player);
+    
+    if (player.hp <= 0) {
+        initGameover();
+    }
 }
 
 function movePlayer(delta) {
@@ -141,9 +155,9 @@ function moveSprite(sprite, delta, toBounce = false) {
 
 function addPumpkin() {
     let newPumpkin = new Character(CharacterImagePaths.pumpkin, player.x, player.y);
-    newPumpkin.position = player.position;
-    newPumpkin.dx = 5 * 2 * (Math.random() - 0.5);
-    newPumpkin.dy = 5 * 2 * (Math.random() - 0.5);
+    newPumpkin.position.set(20, 20);
+    newPumpkin.dx = maxPumpkinsSpeed * 2 * (Math.random() - 0.5);
+    newPumpkin.dy = maxPumpkinsSpeed * 2 * (Math.random() - 0.5);
     newPumpkin.omega = -2 * 2 * Math.PI / 180;
 
     if (pumpkins.children.length >= maxPumpkinsCount)
@@ -176,4 +190,25 @@ function hideBarrier(character) {
 
     character.removeChild(character.barrierSprite);
     character.barrierSprite = null;
+}
+
+function gameOver(delta) {
+    if (input.keyZ) {
+        initPlay();
+    }
+}
+
+function initGameover() {
+    let msg = new PIXI.Text(
+        'げーむおーばー\nもう一回あそぶ (z)',
+        {
+            fontFamily: 'Arial',
+            fontSize: '36px',
+            fill: "#FFFFFF",
+            align: 'center',
+        });
+    msg.anchor.set(0.5);
+    msg.position.set(app.screen.width / 2, app.screen.height / 2);
+    app.stage.addChild(msg);
+    state = gameOver;
 }
