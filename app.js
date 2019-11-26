@@ -1,6 +1,7 @@
 'use strict'
 
 let app;
+let initialPumpkins = 3;
 let maxPumpkinsCount = 10;
 let maxPumpkinsSpeed = 2.5;
 
@@ -20,7 +21,8 @@ class Character extends PIXI.Container {
         this.dx = 0;
         this.dy = 0;
         this.omega = 0;
-        this.hp = 10;
+        this.hp = 50;
+        this.maxHp = 50;
     }
 
     static isHit(c1, c2) {
@@ -42,8 +44,37 @@ class Character extends PIXI.Container {
     }
 };
 
+class HpBar extends PIXI.Container {
+    constructor(maxHp) {
+        super();
+        
+        this.maxHp = maxHp;
+        this.barSizeX = 640;
+        this.barSizeY = 8;
+
+        let back = new PIXI.Graphics();
+        back.beginFill(0xa0a0a0);
+        back.drawRect(0, 0, this.width, this.barSizeY);
+        back.endFill();
+        this.addChild(back);
+
+        let front = new PIXI.Graphics();
+        this.addChild(front);
+        front.beginFill(0x00aa00, 0.5);
+        front.drawRect(0, 0, this.barSizeX, this.barSizeY);
+        front.endFill();
+
+        this.front = front;
+    }
+
+    update(hp) {
+        this.front.width = this.barSizeX * hp / this.maxHp;
+    }
+}
+
 let pumpkins;
 let player;
+let hpBar;
 let input;
 let state = play;
 
@@ -75,8 +106,11 @@ function initPlay() {
     player.omega = 0.2 * 2 * Math.PI / 60;
     player.barrierSprite = null;
 
+    hpBar = new HpBar(player.maxHp);
+    app.stage.addChild(hpBar);
+
     pumpkins = new PIXI.Container();
-    for (let i = 0; i < 3; i++)
+    for (let i = 0; i < initialPumpkins; i++)
         addPumpkin();
 
     app.stage.addChild(player);
@@ -120,6 +154,8 @@ function play(delta) {
         toggleBarrier(player);
     else
         hideBarrier(player);
+    
+    hpBar.update(player.hp);
     
     if (player.hp <= 0) {
         initGameover();
