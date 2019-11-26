@@ -1,9 +1,11 @@
 'use strict'
 
 let app;
-let initialPumpkins = 3;
+let playerSpeed = 5;
+let initialPumpkins = 1;
 let maxPumpkinsCount = 10;
-let maxPumpkinsSpeed = 2.5;
+let maxPumpkinsSpeed = 5;
+let timeBeforeNextPumpkin_s = 5;
 
 let CharacterImagePaths = {
     ghost: "images/obake.png",
@@ -76,6 +78,7 @@ let pumpkins;
 let player;
 let hpBar;
 let input;
+let startTime;
 let state = play;
 
 function initScreen() {
@@ -102,7 +105,7 @@ function initPlay() {
         app.stage.removeChildAt(app.stage.children.length - 1);
     }
 
-    player = new Character(CharacterImagePaths.ghost, app.screen.width - 20, app.screen.height / 2);
+    player = new Character(CharacterImagePaths.ghost, 0.6 * app.screen.width, 0.6 * app.screen.height);
     player.omega = 0.2 * 2 * Math.PI / 60;
     player.barrierSprite = null;
 
@@ -115,6 +118,8 @@ function initPlay() {
 
     app.stage.addChild(player);
     app.stage.addChild(pumpkins);
+
+    startTime = app.ticker.lastTime;
 
     state = play;
 }
@@ -141,6 +146,14 @@ function gameLoop(delta) {
 function play(delta) {
     movePlayer(delta);
 
+    let phase = 1 + Math.floor(0.001 * (app.ticker.lastTime - startTime) / timeBeforeNextPumpkin_s);
+    if (phase > maxPumpkinsCount) {
+        initGameClear();
+    }
+
+    if (phase > pumpkins.children.length)
+        addPumpkin();
+
     let isHit = false;
     pumpkins.children.forEach(element => {
         moveSprite(element, delta, true);
@@ -163,9 +176,8 @@ function play(delta) {
 }
 
 function movePlayer(delta) {
-    let sp = 5;
-    player.dx = sp * input.arrowX;
-    player.dy = sp * input.arrowY;
+    player.dx = playerSpeed * input.arrowX;
+    player.dy = playerSpeed * input.arrowY;
 
     if (input.keyZ)
         addPumpkin();
@@ -179,9 +191,9 @@ function movePlayer(delta) {
 }
 
 function moveSprite(sprite, delta, toBounce = false) {
-    sprite.x += sprite.dx * (1 + delta);
-    sprite.y += sprite.dy * (1 + delta);
-    sprite.rotation += sprite.omega * (1 + delta);
+    sprite.x += sprite.dx * delta;
+    sprite.y += sprite.dy * delta;
+    sprite.rotation += sprite.omega * delta;
 
     if (toBounce) {
         if (sprite.x < 10 || sprite.x > 630) sprite.dx *= -1;
@@ -247,4 +259,25 @@ function initGameover() {
     msg.position.set(app.screen.width / 2, app.screen.height / 2);
     app.stage.addChild(msg);
     state = gameOver;
+}
+
+function gameClear(delta) {
+    if (input.keyZ)
+        initPlay();
+}
+
+function initGameClear() {
+    let msg = new PIXI.Text(
+        'くりあ\nもう一回遊ぶ (z)',
+        {
+            fontFamily: 'Arial',
+            fontSize: '36px',
+            fill: '#FFFFFF',
+            align: 'center'
+        }
+    );
+    msg.anchor.set(0.5);
+    msg.position.set(app.screen.width / 2, app.screen.height / 2);
+    app.stage.addChild(msg);
+    state = gameClear;
 }
