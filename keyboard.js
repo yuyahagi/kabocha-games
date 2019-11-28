@@ -2,45 +2,24 @@
 
 class PlayerInput {
     constructor() {
-        this.keyPressedLeft = false;
-        this.keyPressedUp = false;
-        this.keyPressedRight = false;
-        this.keyPressedDown = false;
-        this.keyPressedZ = false;
-        this.keyPressedX = false;
-
         // Capture keyboard arrow keys.
-        this.left = keyboard("ArrowLeft"),
-        this.up = keyboard("ArrowUp"),
-        this.right = keyboard("ArrowRight"),
-        this.down = keyboard("ArrowDown"),
-        this.keyz = keyboard("z"),
-        this.keyx = keyboard("x");
-
-        this.left.press = () => { this.keyPressedLeft = true; }
-        this.up.press = () => { this.keyPressedUp = true; }
-        this.right.press = () => { this.keyPressedRight= true; }
-        this.down.press = () => { this.keyPressedDown = true; }
-        this.left.release = () => { this.keyPressedLeft = false; }
-        this.up.release = () => { this.keyPressedUp = false; }
-        this.right.release = () => { this.keyPressedRight = false; }
-        this.down.release = () => { this.keyPressedDown = false; }
-
-        this.keyz.press = () => { this.keyPressedZ = true; };
-        this.keyz.release = () => { this.keyPressedZ = false; };
-        this.keyx.press = () => { this.keyPressedX = true; };
-        this.keyx.release = () => { this.keyPressedX = false; };
+        this.left = new Keyboard("ArrowLeft");
+        this.up = new Keyboard("ArrowUp");
+        this.right = new Keyboard("ArrowRight");
+        this.down = new Keyboard("ArrowDown");
+        this.keyz = new Keyboard("z");
+        this.keyx = new Keyboard("x");
     }
 
     get arrowX() {
-        if (this.keyPressedLeft) {
-            if (this.keyPressedRight)
+        if (this.left.isDown) {
+            if (this.right.isDown)
                 return 0;
             else
                 return -1;
         }
         else {
-            if (this.keyPressedRight)
+            if (this.right.isDown)
                 return +1;
             else
                 return 0;
@@ -48,74 +27,85 @@ class PlayerInput {
     }
 
     get arrowY() {
-        if (this.keyPressedUp) {
-            if (this.keyPressedDown)
+        if (this.up.isDown) {
+            if (this.down.isDown)
                 return 0;
             else
                 return -1;
         }
         else {
-            if (this.keyPressedDown)
+            if (this.down.isDown)
                 return +1;
             else
                 return 0;
         }
     }
 
-    get keyZ() {
-        let pressed = this.keyPressedZ;
-        this.keyPressedZ = false;
-        return pressed;
+    get keyDownZ() {
+        return this.keyz.isDown;
     }
 
-    get keyX() {
-        let pressed = this.keyPressedX;
-        this.keyPressedX = false;
-        return pressed;
+    get keyDownX() {
+        return this.keyx.isDown;
+    }
+
+    get pressedZ() {
+        return this.keyz.pressed;
+    }
+
+    get pressedX() {
+        return this.keyx.pressed;
     }
 }
 
-function keyboard(value) {
-    let key = {};
-    key.value = value;
-    key.isDown = false;
-    key.isUp = true;
-    key.press = undefined;
-    key.release = undefined;
+class Keyboard {
+    constructor(value) {
+        this.value = value;
+        this.isDown = false;
+        this.hasPressedHandled = false;
+        this.keydown = undefined;
+        this.keyup = undefined;
 
-    key.downHandler = event => {
-        if (event.key === key.value) {
-            if (key.isUp && key.press) key.press();
-            key.isDown = true;
-            key.isUp = false;
-            event.preventDefault();
-        }
-    };
-    key.upHandler = event => {
-        if (event.key === key.value) {
-            if (key.isDown && key.release) key.release();
-            key.isDown = false;
-            key.isUp = true;
-            event.preventDefault();
-        }
-    };
+        this.downHandler = event => {
+            if (event.key === this.value) {
+                if (!this.isDown) {
+                    this.hasPressedHandled = false;
+                }
+                this.isDown = true;
+                event.preventDefault();
+            }
+        };
+        this.upHandler = event => {
+            if (event.key === this.value) {
+                if (this.isDown) {
+                    this.hasPressedHandled = false;
+                }
+                this.isDown = false;
+                event.preventDefault();
+            }
+        };
 
-    // Attach event listeners.
-    const downListener = key.downHandler.bind(key);
-    const upListener = key.upHandler.bind(key);
-
-    window.addEventListener(
-        "keydown", downListener, false
-    );
-    window.addEventListener(
-        "keyup", upListener, false
-    );
+        // Attach event listeners.
+        window.addEventListener(
+            "keydown", this.downHandler, false
+        );
+        window.addEventListener(
+            "keyup", this.upHandler, false
+        );
+    }
 
     // Detach event listeners.
-    key.unsubscribe = () => {
-        window.removeEventListener("keydown", downListener);
-        window.removeEventListener("keyup", uplistener);
-    };
+    unsubscribe() {
+        window.removeEventListener("keydown", this.downHandler);
+        window.removeEventListener("keyup", this.upHandler);
+    }
 
-    return key;
+    get pressed() {
+        if (this.isDown && !this.hasPressedHandled) {
+            this.hasPressedHandled = true;
+            return true;
+        }
+        else
+            return false;
+    }
 }

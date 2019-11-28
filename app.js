@@ -1,10 +1,10 @@
 'use strict'
 
 let app;
-let playerSpeed = 5;
+let playerSpeed = 10;
 let initialPumpkins = 1;
 let maxPumpkinsCount = 10;
-let maxPumpkinsSpeed = 5;
+let maxPumpkinsSpeed = 15;
 let timeBeforeNextPumpkin_s = 5;
 
 let CharacterImagePaths = {
@@ -179,7 +179,7 @@ function movePlayer(delta) {
     player.dx = playerSpeed * input.arrowX;
     player.dy = playerSpeed * input.arrowY;
 
-    if (input.keyZ)
+    if (input.pressedZ)
         addPumpkin();
     
     moveSprite(player, delta);
@@ -241,7 +241,7 @@ function hideBarrier(character) {
 }
 
 function gameOver(delta) {
-    if (input.keyZ) {
+    if (input.pressedZ) {
         initPlay();
     }
 }
@@ -262,7 +262,7 @@ function initGameover() {
 }
 
 function gameClear(delta) {
-    if (input.keyZ)
+    if (input.pressedZ)
         initPlay();
 }
 
