@@ -1,10 +1,10 @@
 'use strict'
 
 let app;
-let playerSpeed = 10;
+let playerSpeed = 5;
 let initialPumpkins = 1;
 let maxPumpkinsCount = 10;
-let maxPumpkinsSpeed = 15;
+let maxPumpkinsSpeed = 5;
 let timeBeforeNextPumpkin_s = 5;
 
 let CharacterImagePaths = {
