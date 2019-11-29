@@ -1,9 +1,22 @@
 'use strict'
 
-let CharacterImagePaths = {
-    ghost: "images/obake.png",
-    pumpkin: "images/kabocha.png"
-};
+const problems = [
+    'いか',
+    'たこ',
+    'あか',
+    'がく',
+    'のり',
+    'もも',
+    'はな',
+    'まま',
+    'むし',
+    'おなか',
+    'みどり',
+    'さかな',
+    'かえる',
+    'おにぎり',
+    'うみのいきもの',
+];
 
 let app;
 let input;
@@ -31,13 +44,13 @@ class Letter extends PIXI.Text {
 }
 
 class Word extends PIXI.Container {
-    constructor(syllables) {
+    constructor(text) {
         super();
-        syllables.forEach(c => {
-            let letter = new Letter(c, '#404040', '#606060');
+        for (let i = 0; i < text.length; i++) {
+            let letter = new Letter(text[i], '#404040', '#606060');
             letter.x = this.width == 0 ? 0 : this.width + letter.margin;
             this.addChild(letter);
-        });
+        };
         this.cursor = 0;
     }
 
@@ -68,10 +81,6 @@ class Word extends PIXI.Container {
 function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });
     app.loader
-        .add([
-            CharacterImagePaths.ghost,
-            CharacterImagePaths.pumpkin,
-        ])
         .load(setup);
     
     let mainDiv = document.getElementById('main');
@@ -84,8 +93,14 @@ function setup(loader, resources) {
     app.ticker.add(delta => gameLoop(delta));
 }
 
+let problemIndex = 0;
 function initPlay() {
-    letters = new Word(['う', 'み', 'の', 'い', 'き', 'も', 'の']);
+    if (letters) {
+        app.stage.removeChild(letters);
+    }
+
+    letters = new Word(problems[problemIndex]);
+    problemIndex = (problemIndex + 1) % problems.length;
     letters.position.set(
         app.screen.width / 2 - letters.width / 2,
         app.screen.height / 2 - letters.height / 2);
