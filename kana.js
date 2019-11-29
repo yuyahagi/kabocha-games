@@ -101,9 +101,12 @@ function initPlay() {
 
     letters = new Word(problems[problemIndex]);
     problemIndex = (problemIndex + 1) % problems.length;
+    letters.pivot.set(
+        letters.width / 2,
+        letters.height / 2);
     letters.position.set(
-        app.screen.width / 2 - letters.width / 2,
-        app.screen.height / 2 - letters.height / 2);
+        app.screen.width / 2,
+        app.screen.height / 2);
     app.stage.addChild(letters);
 
     if (typing) typing.unsubscribe();
@@ -179,6 +182,14 @@ function play(delta) {
 function gameClear(delta) {
     moveFallingLetters();
 
-    if (typing.getPressedKeys().length > 0)
+    // Create a field to hold steps.
+    if (!letters.t) {
+        letters.t = 0;
+    }
+    letters.scale.set(1 + 0.001 * letters.t**3);
+    letters.rotation = 0.001 * letters.t**3;
+    letters.t += 1;
+
+    if (letters.scale.x > 10)
         initPlay();
 }
