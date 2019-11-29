@@ -109,3 +109,55 @@ class Keyboard {
             return false;
     }
 }
+
+class TypingInput {
+    constructor() {
+        // Key map.
+        this.isDown = new Map();
+        this.hasPressedHandled = new Map();
+        for (let c = 65; c <= 90; c++) {
+            this.isDown.set(c, false);
+            this.hasPressedHandled.set(c, false);
+        }
+
+        this.inputs = [];
+
+        this.downHandler = event => {
+            const k = event.key;
+            const cc = k[0].toUpperCase().charCodeAt(0);
+            if (!event.repeat && k.length === 1 && cc >= 65 && cc <= 90) {
+                console.log(k);
+                console.log(cc);
+                this.inputs.push(k);
+            }
+            event.preventDefault();
+        }
+
+        this.upHandler = event => {
+            const c = event.which;
+            if (c >= 65 && c <= 90) {
+                if (this.isDown[c]) {
+                    this.hasPressedHandled[c] = false;
+                }
+                this.isDown[c] = false;
+                event.preventDefault();
+            }
+        }
+
+        window.addEventListener(
+            'keydown', this.downHandler, false);
+        window.addEventListener(
+            'keyup', this.upHandler, false);
+    }
+
+    unsubscribe() {
+        window.removeEventListener("keydown", this.downHandler);
+        window.removeEventListener("keyup", this.upHandler);
+    }
+
+    getPressedKeys(c) {
+        const inputs = this.inputs;
+        this.inputs = [];
+        return inputs;
+    }
+}

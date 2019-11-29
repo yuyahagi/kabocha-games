@@ -7,6 +7,7 @@ let CharacterImagePaths = {
 
 let app;
 let input;
+let typing;
 let state = play;
 let letters;
 let fallingLetters = [];
@@ -90,6 +91,9 @@ function initPlay() {
         app.screen.height / 2 - letters.height / 2);
     app.stage.addChild(letters);
 
+    if (typing) typing.unsubscribe();
+    typing = new TypingInput();
+
     state = play;
 }
 
@@ -127,28 +131,30 @@ let i = 0;
 function play(delta) {
     let nextInput = userInputs[i];
 
-    if (input.pressedZ) {
-        const filled = letters.fill(nextInput);
-        i = (i + 1) % userInputs.length;
+    const inputs = typing.getPressedKeys();
+    if (inputs.length > 0) {
+        for (let i = 0; i < inputs.length; i++) {
+            nextInput = inputs[i];
+            const filled = letters.fill(nextInput);
+            i = (i + 1) % userInputs.length;
 
-        if (!filled) {
-            const correctLetter = letters.getLetterAt(letters.cursor);
-            let startingPosition = correctLetter.parent.toGlobal(correctLetter.position);
-            startingPosition.x += correctLetter.width / 2;
-            startingPosition.y += correctLetter.height / 2;
+            if (!filled) {
+                const correctLetter = letters.getLetterAt(letters.cursor);
+                let startingPosition = correctLetter.parent.toGlobal(correctLetter.position);
+                startingPosition.x += correctLetter.width / 2;
+                startingPosition.y += correctLetter.height / 2;
 
-            let l = new Letter(nextInput, '#ffffff', '#000000');
-            l.x = startingPosition.x;
-            l.y = startingPosition.y;
-            l.anchor.set(0.5);
-            console.log(startingPosition);
-            console.log(l.position);
-            l.dy = -1;
-            l.dx = 0 * (Math.random() - 0.5);
-            l.omega = 0.05 * (Math.random() - 0.5);
+                let l = new Letter(nextInput, '#ffffff', '#000000');
+                l.x = startingPosition.x;
+                l.y = startingPosition.y;
+                l.anchor.set(0.5);
+                l.dy = -1;
+                l.dx = 0 * (Math.random() - 0.5);
+                l.omega = 0.05 * (Math.random() - 0.5);
 
-            app.stage.addChild(l);
-            fallingLetters.push(l);
+                app.stage.addChild(l);
+                fallingLetters.push(l);
+            }
         }
     }
 
