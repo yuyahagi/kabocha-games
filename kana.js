@@ -23,6 +23,7 @@ let input;
 let typing;
 let state = play;
 let letters;
+let intermediary;
 let fallingLetters = [];
 let romajiParser;
 
@@ -90,6 +91,21 @@ function initScreen() {
 
 function setup(loader, resources) {
     input = new PlayerInput();
+
+    intermediary = new PIXI.Text(
+        '',
+        {
+            fontFamily: 'Arial',
+            fontSize: '24px',
+            fill: '#ffffff',
+            align: 'center',
+        });
+    intermediary.anchor.set(0.5);
+    intermediary.position.set(
+        app.screen.width / 2,
+        app.screen.height / 2 + 80);
+    app.stage.addChild(intermediary);
+
     initPlay();
     app.ticker.add(delta => gameLoop(delta));
 }
@@ -109,6 +125,8 @@ function initPlay() {
         app.screen.width / 2,
         app.screen.height / 2);
     app.stage.addChild(letters);
+
+    intermediary.text = '';
 
     if (typing) typing.unsubscribe();
     typing = new TypingInput();
@@ -156,10 +174,11 @@ function play(delta) {
     while (pos < keypresses.length && !letters.allFilled) {
         // Parse input characters into a romaji.
         while (!romajiParser.finalized && pos < keypresses.length) {
-            console.log('Parsing');
             romajiParser.append(keypresses[pos]);
             ++pos;
         }
+
+        intermediary.text = romajiParser.characters.toLowerCase();
 
         if (romajiParser.finalized) {
             // Parsing finalized. This may be a valid letter
