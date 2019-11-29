@@ -24,6 +24,7 @@ let typing;
 let state = play;
 let letters;
 let fallingLetters = [];
+let romajiParser;
 
 class Letter extends PIXI.Text {
     constructor(text, fill = '#404040', stroke = '#606060') {
@@ -112,6 +113,8 @@ function initPlay() {
     if (typing) typing.unsubscribe();
     typing = new TypingInput();
 
+    romajiParser = new Romaji();
+
     state = play;
 }
 
@@ -144,18 +147,27 @@ function gameLoop(delta) {
 }
 
 function play(delta) {
-    const inputs = typing.getPressedKeys();
-    if (inputs.length > 0) {
-        let pos = 0;
-        // If you type fast, there may be multiple keypresses.
-        // Process all of them until all letters in the problem
-        // have been filled.
-        for (let i = 0; !letters.allFilled && i < inputs.length; i++) {
-            const parsed = parseTextIntoKana(inputs, pos);
-            const nextInput = parsed.kana;
-            pos = parsed.nextIndex;
+    const keypresses = typing.getPressedKeys();
+
+    // If you type fast, there may be multiple keypresses.
+    // Process all of them until all letters in the problem
+    // have been filled.
+    let pos = 0;
+    while (pos < keypresses.length && !letters.allFilled) {
+        // Parse input characters into a romaji.
+        while (!romajiParser.finalized && pos < keypresses.length) {
+            console.log('Parsing');
+            romajiParser.append(keypresses[pos]);
+            ++pos;
+        }
+
+        if (romajiParser.finalized) {
+            // Parsing finalized. This may be a valid letter
+            // or may be a failed parsing.
+            const nextInput = romajiParser.parsed;
+            romajiParser.clear();
             const filled = letters.fill(nextInput);
-            
+
             if (!filled) {
                 const correctLetter = letters.getLetterAt(letters.cursor);
                 let startingPosition = correctLetter.parent.toGlobal(correctLetter.position);

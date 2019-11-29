@@ -80,32 +80,35 @@ const romajis = new Map([
     ['NN', 'ん'],
 ]);
 
-let lastFoundConsonant = '';
-
-function parseTextIntoKana(text, startIndex) {
-    let pos = startIndex;
-    let vowel = null;
-    let found = false;
-    while (!found && pos < text.length) {
-        if (vowels.includes(text[pos])) {
-            found = true;
-            vowel = text[pos];
-        }
-        if (consonants.includes(text[pos])) {
-            lastFoundConsonant = text[pos];
-        }
-        ++pos;
+class Romaji {
+    constructor() {
+        this.characters = '';
+        this.parsed = null;
+        this.finalized = false;
     }
 
-    const kana = found ? romajis.get(lastFoundConsonant + vowel) : null;
-
-    // Clear consonant.
-    if (found) {
-        lastFoundConsonant = '';
+    clear() {
+        this.characters = '';
+        this.parsed = null;
+        this.finalized = false;
     }
 
-    return {
-        kana: kana,
-        nextIndex: pos,
-    };
+    append(c) {
+        // c: 'A'-'Z'
+
+        // In case additional characters are appended, clear state and start over.
+        if (this.finalized) {
+            this.clear();
+        }
+        
+        this.characters += c;
+        this.parsed = romajis.get(this.characters);
+        if (this.parsed) {
+            this.finalized = true;
+        }
+        else if (this.characters.length >= 2) {
+            this.finalized = true;
+            this.parsed = null;
+        }
+    }
 }
