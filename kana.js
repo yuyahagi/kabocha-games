@@ -1,10 +1,15 @@
 'use strict'
 
 const problems = [
+    'あ',
+    'もり',
+    'えん',
     'いか',
     'たこ',
     'あか',
+    'かず',
     'がく',
+    'とる',
     'のり',
     'もも',
     'はな',
@@ -12,6 +17,7 @@ const problems = [
     'むし',
     'おなか',
     'みどり',
+    'すいか',
     'さかな',
     'かえる',
     'おにぎり',
@@ -25,6 +31,7 @@ let state = play;
 let letters;
 let intermediary;
 let fallingLetters = [];
+let gameClearMessage;
 let romajiParser;
 
 class Letter extends PIXI.Text {
@@ -106,6 +113,21 @@ function setup(loader, resources) {
         app.screen.height / 2 + 80);
     app.stage.addChild(intermediary);
 
+    gameClearMessage = new PIXI.Text(
+        'げーむ くりあ\nなにか キーを おして ください',
+        {
+            fontFamily: 'Arial',
+            fontSize: '36px',
+            fill: '#ffffff',
+            align: 'center',
+        });
+    gameClearMessage.anchor.set(0.5);
+    gameClearMessage.position.set(
+        app.screen.width / 2,
+        app.screen.height / 2);
+    gameClearMessage.visible = false;
+    app.stage.addChild(gameClearMessage);
+
     initPlay();
     app.ticker.add(delta => gameLoop(delta));
 }
@@ -117,7 +139,6 @@ function initPlay() {
     }
 
     letters = new Word(problems[problemIndex]);
-    problemIndex = (problemIndex + 1) % problems.length;
     letters.pivot.set(
         letters.width / 2,
         letters.height / 2);
@@ -209,11 +230,12 @@ function play(delta) {
 
     moveFallingLetters();
 
-    if (letters.allFilled)
-        state = gameClear;
+    if (letters.allFilled) {
+        state = loadNextProblem;
+    }
 }
 
-function gameClear(delta) {
+function loadNextProblem(delta) {
     moveFallingLetters();
 
     // Create a field to hold steps.
@@ -224,6 +246,30 @@ function gameClear(delta) {
     letters.rotation = 0.001 * letters.t**3;
     letters.t += 1;
 
-    if (letters.scale.x > 10)
+    if (letters.scale.x > 10) {
+        ++problemIndex;
+        if (problemIndex >= problems.length) {
+            initGameClear();
+        }
+        else {
+            state = loadNextProblem;
+            initPlay();
+        }
+    }
+}
+
+function initGameClear() {
+    intermediary.text = '';
+    letters.visible = false;
+    gameClearMessage.visible = true;
+
+    state = gameClear;
+}
+
+function gameClear(delta) {
+    if (typing.getPressedKeys().length > 0) {
+        problemIndex = 0;
+        gameClearMessage.visible = false;
         initPlay();
+    }
 }
