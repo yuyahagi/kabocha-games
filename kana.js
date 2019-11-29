@@ -147,12 +147,15 @@ function play(delta) {
     const inputs = typing.getPressedKeys();
     if (inputs.length > 0) {
         let pos = 0;
-        for (let i = 0; i < inputs.length; i++) {
+        // If you type fast, there may be multiple keypresses.
+        // Process all of them until all letters in the problem
+        // have been filled.
+        for (let i = 0; !letters.allFilled && i < inputs.length; i++) {
             const parsed = parseTextIntoKana(inputs, pos);
             const nextInput = parsed.kana;
             pos = parsed.nextIndex;
             const filled = letters.fill(nextInput);
-
+            
             if (!filled) {
                 const correctLetter = letters.getLetterAt(letters.cursor);
                 let startingPosition = correctLetter.parent.toGlobal(correctLetter.position);
