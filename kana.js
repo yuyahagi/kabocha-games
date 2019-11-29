@@ -85,7 +85,7 @@ function setup(loader, resources) {
 }
 
 function initPlay() {
-    letters = new Word(['も', 'も', 'ちゃ', 'ん']);
+    letters = new Word(['う', 'み', 'の', 'い', 'き', 'も', 'の']);
     letters.position.set(
         app.screen.width / 2 - letters.width / 2,
         app.screen.height / 2 - letters.height / 2);
@@ -125,18 +125,15 @@ function gameLoop(delta) {
     state(delta);
 }
 
-let userInputs = ['も', 'の', 'も', 'ちゃ', 'む', 'ん', 'な'];
-let i = 0;
-
 function play(delta) {
-    let nextInput = userInputs[i];
-
     const inputs = typing.getPressedKeys();
     if (inputs.length > 0) {
+        let pos = 0;
         for (let i = 0; i < inputs.length; i++) {
-            nextInput = inputs[i];
+            const parsed = parseTextIntoKana(inputs, pos);
+            const nextInput = parsed.kana;
+            pos = parsed.nextIndex;
             const filled = letters.fill(nextInput);
-            i = (i + 1) % userInputs.length;
 
             if (!filled) {
                 const correctLetter = letters.getLetterAt(letters.cursor);
@@ -161,5 +158,12 @@ function play(delta) {
     moveFallingLetters();
 
     if (letters.allFilled)
+        state = gameClear;
+}
+
+function gameClear(delta) {
+    moveFallingLetters();
+
+    if (typing.getPressedKeys().length > 0)
         initPlay();
 }

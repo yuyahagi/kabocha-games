@@ -126,9 +126,7 @@ class TypingInput {
             const k = event.key;
             const cc = k[0].toUpperCase().charCodeAt(0);
             if (!event.repeat && k.length === 1 && cc >= 65 && cc <= 90) {
-                console.log(k);
-                console.log(cc);
-                this.inputs.push(k);
+                this.inputs.push(k.toUpperCase());
             }
             event.preventDefault();
         }
