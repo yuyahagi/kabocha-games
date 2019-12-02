@@ -20,7 +20,10 @@ const problems = [
     'すいか',
     'さかな',
     'かえる',
+    'ふぁいと',
+    'うちゅう',
     'おにぎり',
+    'ばしゃばしゃ',
     'うみのいきもの',
 ];
 
@@ -48,15 +51,26 @@ class Letter extends PIXI.Text {
                 strokeThickness: 3,
             });
         
-        this.margin = 12;
+        this.margin = 6;
     }
 }
 
 class Word extends PIXI.Container {
     constructor(text) {
         super();
-        for (let i = 0; i < text.length; i++) {
-            let letter = new Letter(text[i], '#404040', '#606060');
+
+        // List of auxiliary letters that attach to the normal ones.
+        const a = ['ゃ', 'ゅ', 'ょ', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ'];
+
+        let pos = 0;
+        while (pos < text.length) {
+            // The letter to be rendered.
+            // Check if the next letter attaches to the current one (e.g., 'きゃ').
+            let c = text[pos++];
+            if (pos < text.length && a.includes(text[pos]))
+                c += text[pos++];
+            
+            let letter = new Letter(c, '#404040', '#606060');
             letter.x = this.width == 0 ? 0 : this.width + letter.margin;
             this.addChild(letter);
         };
@@ -159,7 +173,7 @@ function initPlay() {
 
 function fillLetter(index, c) {
     let newLetter = new Letter(c, '#ffffff', '#000000')
-    newLetter.x = 0;//letters.width == 0 ? 0 : letters.width + newLetter.margin;
+    newLetter.x = 0;
     letters.addChild(newLetter);
 
     letters.position.set(

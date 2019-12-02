@@ -112,45 +112,36 @@ class Keyboard {
 
 class TypingInput {
     constructor() {
-        // Key map.
-        this.isDown = new Map();
-        this.hasPressedHandled = new Map();
-        for (let c = 65; c <= 90; c++) {
-            this.isDown.set(c, false);
-            this.hasPressedHandled.set(c, false);
-        }
-
+        // Buffer to store pressed keys.
         this.inputs = [];
 
+        // Handle key down events of non-repeat, case-insensitive
+        // alphabet keys.
+        // 
+        // To prevent accidentally invoking shortcuts (e.g., Ctrl-R),
+        // prevent default event handling for all such keys (children
+        // may accidentally hit a shortcut key). If it is desired to
+        // pass through shortcuts keys, do not call event.preventDefault()
+        // when event.ctrlKey or event.altKey is true.
         this.downHandler = event => {
-            const k = event.key;
-            const cc = k[0].toUpperCase().charCodeAt(0);
-            if (!event.repeat && k.length === 1 && cc >= 65 && cc <= 90) {
-                this.inputs.push(k.toUpperCase());
+            const k = event.key[0].toUpperCase();
+            const cc = k.charCodeAt(0);
+            if (!event.repeat
+                && event.key.length === 1
+                && cc >= 65
+                && cc <= 90)
+            {
+                this.inputs.push(k);
             }
             event.preventDefault();
         }
 
-        this.upHandler = event => {
-            const c = event.which;
-            if (c >= 65 && c <= 90) {
-                if (this.isDown[c]) {
-                    this.hasPressedHandled[c] = false;
-                }
-                this.isDown[c] = false;
-                event.preventDefault();
-            }
-        }
-
         window.addEventListener(
             'keydown', this.downHandler, false);
-        window.addEventListener(
-            'keyup', this.upHandler, false);
     }
 
     unsubscribe() {
         window.removeEventListener("keydown", this.downHandler);
-        window.removeEventListener("keyup", this.upHandler);
     }
 
     getPressedKeys(c) {
