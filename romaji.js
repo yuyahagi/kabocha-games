@@ -195,12 +195,13 @@ class Romaji {
         this.characters += c;
 
         // Remove the input characters in the FIFO manner until parsing
-        // becomes possible.
-        while (this.characters.length > 0 && !romajiIntermediary.has(this.characters)) {
+        // becomes possible. After this, this.characters is either empty
+        // or parsable.
+        while (this.characters.length > 0 && !this._isParsable(this.characters)) {
             this.characters = this.characters.slice(1);
         };
 
-        this.parsed = romajiIntermediary.get(this.characters);
+        this.parsed = this._parse(this.characters);
         if (this.parsed == null) {
             this.finalized = false;
             this.parsed = null;
@@ -212,5 +213,30 @@ class Romaji {
         else {
             this.finalized = true;
         }
+    }
+
+    _isParsable(chars) {
+        if (this._isSokuon(chars)) {
+            return romajiIntermediary.has(chars.slice(1));
+        }
+        else {
+            return romajiIntermediary.has(chars);
+        }
+    }
+
+    _parse(chars) {
+        if (this._isSokuon(chars)) {
+            let mora = romajiIntermediary.get(chars.slice(1));
+            return mora == null || mora === '' ? mora : 'っ' + mora;
+        }
+        else {
+            return romajiIntermediary.get(chars);
+        }
+    }
+
+    _isSokuon(chars) {
+        // A sokuon ('っ', a small 'tsu') is input as doubled consonants,
+        // except 'NN' which will be parsed as 'ん'.
+        return chars.length > 1 && chars[0] == chars[1] && chars[0] !== 'N';
     }
 }

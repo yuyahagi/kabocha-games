@@ -21,10 +21,13 @@ const problems = [
     'さかな',
     'かえる',
     'ふぁいと',
+    'あっさり',
+    'かったー',
     'うちゅう',
     'おにぎり',
     'ばしゃばしゃ',
     'うみのいきもの',
+    'なっちゃん',
 ];
 
 let app;
@@ -65,8 +68,12 @@ class Word extends PIXI.Container {
         let pos = 0;
         while (pos < text.length) {
             // The letter to be rendered.
-            // Check if the next letter attaches to the current one (e.g., 'きゃ').
+            // Also append the next letter if:
+            //   * This letter is a sokuon ('っ')
+            //   * or the next letter is a small one (e.g., 'ゃ').
             let c = text[pos++];
+            if (pos < text.length && c === 'っ')
+                c += text[pos++];
             if (pos < text.length && a.includes(text[pos]))
                 c += text[pos++];
             
