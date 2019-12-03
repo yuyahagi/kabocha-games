@@ -1,7 +1,7 @@
 'use strict'
 
 const problems = [
-    'あ',
+    'あーと',
     'もり',
     'えん',
     'いか',

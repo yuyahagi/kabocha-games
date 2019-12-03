@@ -159,6 +159,7 @@ const romajis = new Map([
     ['PYU', 'ぴゅ'],
     ['PYE', 'ぴぇ'],
     ['PYO', 'ぴょ'],
+    ['-', 'ー'],
 ]);
 
 // Extend intermediary romaji inputs.

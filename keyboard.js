@@ -128,8 +128,7 @@ class TypingInput {
             const cc = k.charCodeAt(0);
             if (!event.repeat
                 && event.key.length === 1
-                && cc >= 65
-                && cc <= 90)
+                && ((cc >= 65 && cc <= 90) || k === '-'))
             {
                 this.inputs.push(k);
             }
