@@ -1,36 +1,7 @@
 'use strict'
 
-const problems = [
-    'あーと',
-    'もり',
-    'えん',
-    'いか',
-    'たこ',
-    'あか',
-    'かず',
-    'がく',
-    'とる',
-    'のり',
-    'もも',
-    'はな',
-    'まま',
-    'むし',
-    'おなか',
-    'みどり',
-    'すいか',
-    'さかな',
-    'かえる',
-    'ふぁいと',
-    'あっさり',
-    'かったー',
-    'うちゅう',
-    'おにぎり',
-    'ばしゃばしゃ',
-    'うみのいきもの',
-    'なっちゃん',
-];
-
 let app;
+let problems;
 let input;
 let typing;
 let state = play;
@@ -111,6 +82,7 @@ class Word extends PIXI.Container {
 function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });
     app.loader
+        .add('problemWords', 'words.json')
         .load(setup);
     
     let mainDiv = document.getElementById('main');
@@ -118,6 +90,8 @@ function initScreen() {
 }
 
 function setup(loader, resources) {
+    problems = resources.problemWords.data.words;
+
     input = new PlayerInput();
 
     intermediary = new PIXI.Text(
