@@ -202,6 +202,9 @@ function gameLoop(delta) {
 }
 
 function play(delta) {
+    if (input.pressedEsc)
+        goToLauncher();
+
     const keypresses = typing.getPressedKeys();
 
     // If you type fast, there may be multiple keypresses.
@@ -290,14 +293,19 @@ function initGameClear() {
         app.screen.height / 2);
     gameDoneMessage.visible = true;
 
-    state = gameClear;
+    state = gameDone;
 }
 
-function gameClear(delta) {
+function gameDone(delta) {
+    if (input.pressedEsc)
+        goToLauncher();
+    
     if (typing.getPressedKeys().length > 0) {
         gameDoneMessage.visible = false;
         initPlay();
     }
+
+    moveFallingLetters();
 }
 
 function initGameOver() {
@@ -307,14 +315,9 @@ function initGameOver() {
         app.screen.height / 4);
     gameDoneMessage.visible = true;
 
-    state = gameOver;
+    state = gameDone;
 }
 
-function gameOver(delta) {
-    if (typing.getPressedKeys().length > 0) {
-        gameDoneMessage.visible = false;
-        initPlay();
-    }
-
-    moveFallingLetters();
+function goToLauncher() {
+    window.open('index.html', '_self');
 }

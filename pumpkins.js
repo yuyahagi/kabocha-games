@@ -116,6 +116,9 @@ function gameLoop(delta) {
 }
 
 function play(delta) {
+    if (input.pressedEsc)
+        goToLauncher();
+    
     movePlayer(delta);
 
     let phase = 1 + Math.floor(0.001 * (app.ticker.lastTime - startTime) / timeBeforeNextPumpkin_s);
@@ -212,12 +215,6 @@ function hideBarrier(character) {
     character.barrierSprite = null;
 }
 
-function gameOver(delta) {
-    if (input.pressedZ) {
-        initPlay();
-    }
-}
-
 function initGameover() {
     let msg = new PIXI.Text(
         'げーむおーばー\nもう一回あそぶ (z)',
@@ -230,10 +227,12 @@ function initGameover() {
     msg.anchor.set(0.5);
     msg.position.set(app.screen.width / 2, app.screen.height / 2);
     app.stage.addChild(msg);
-    state = gameOver;
+    state = gameDone;
 }
 
-function gameClear(delta) {
+function gameDone(delta) {
+    if (input.pressedEsc)
+        goToLauncher();
     if (input.pressedZ)
         initPlay();
 }
@@ -251,5 +250,9 @@ function initGameClear() {
     msg.anchor.set(0.5);
     msg.position.set(app.screen.width / 2, app.screen.height / 2);
     app.stage.addChild(msg);
-    state = gameClear;
+    state = gameDone;
+}
+
+function goToLauncher() {
+    window.open('index.html', '_self');
 }

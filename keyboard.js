@@ -9,6 +9,8 @@ class PlayerInput {
         this.down = new Keyboard("ArrowDown");
         this.keyz = new Keyboard("z");
         this.keyx = new Keyboard("x");
+        this.enter = new Keyboard("Enter");
+        this.esc = new Keyboard("Escape");
     }
 
     get arrowX() {
@@ -49,12 +51,34 @@ class PlayerInput {
         return this.keyx.isDown;
     }
 
+    get pressedArrowX() {
+        let val = 0;
+        if (this.left.pressed) val--;
+        if (this.right.pressed) val++;
+        return val;
+    }
+
+    get pressedArrowY() {
+        let val = 0;
+        if (this.up.pressed) val--;
+        if (this.down.pressed) val++;
+        return val;
+    }
+
     get pressedZ() {
         return this.keyz.pressed;
     }
 
     get pressedX() {
         return this.keyx.pressed;
+    }
+
+    get pressedEnter() {
+        return this.enter.pressed;
+    }
+
+    get pressedEsc() {
+        return this.esc.pressed;
     }
 }
 
