@@ -1,15 +1,22 @@
 'use strict'
 
+// Parameters that determine the game level.
+const timeLimit = 30;
+const numberOfProblems = 10;
+
 let app;
 let problems;
 let input;
 let typing;
 let state = play;
+let problemCount;
 let letters;
+let hpBar;
 let intermediary;
 let fallingLetters = [];
-let gameClearMessage;
+let gameDoneMessage;
 let romajiParser;
+let startTime;
 
 class Letter extends PIXI.Text {
     constructor(text, fill = '#404040', stroke = '#606060') {
@@ -108,32 +115,41 @@ function setup(loader, resources) {
         app.screen.height / 2 + 80);
     app.stage.addChild(intermediary);
 
-    gameClearMessage = new PIXI.Text(
-        'げーむ くりあ\nなにか キーを おして ください',
+    hpBar = new HpBar(1);
+    hpBar.visible = false;
+    app.stage.addChild(hpBar);
+
+    gameDoneMessage = new PIXI.Text(
+        '',
         {
             fontFamily: 'Arial',
             fontSize: '36px',
             fill: '#ffffff',
             align: 'center',
         });
-    gameClearMessage.anchor.set(0.5);
-    gameClearMessage.position.set(
+    gameDoneMessage.anchor.set(0.5);
+    gameDoneMessage.position.set(
         app.screen.width / 2,
         app.screen.height / 2);
-    gameClearMessage.visible = false;
-    app.stage.addChild(gameClearMessage);
+    gameDoneMessage.visible = false;
+    app.stage.addChild(gameDoneMessage);
 
     initPlay();
     app.ticker.add(delta => gameLoop(delta));
 }
 
-let problemIndex = 0;
 function initPlay() {
+    problemCount = 0;
+    initProblem();
+}
+
+function initProblem() {
     if (letters) {
         app.stage.removeChild(letters);
     }
-
-    letters = new Word(problems[problemIndex]);
+    
+    letters = new Word(
+        problems[Math.floor(problems.length * Math.random())]);
     letters.pivot.set(
         letters.width / 2,
         letters.height / 2);
@@ -144,10 +160,15 @@ function initPlay() {
 
     intermediary.text = '';
 
+    hpBar.update(1);
+    hpBar.visible = true;
+
     if (typing) typing.unsubscribe();
     typing = new TypingInput();
 
     romajiParser = new Romaji();
+
+    startTime = app.ticker.lastTime;
 
     state = play;
 }
@@ -228,6 +249,13 @@ function play(delta) {
     if (letters.allFilled) {
         state = loadNextProblem;
     }
+
+    // Reduce HP bar.
+    const hp = 1 - 0.001 / timeLimit * (app.ticker.lastTime - startTime)
+    hpBar.update(hp);
+
+    if (hp <= 0)
+        initGameOver();
 }
 
 function loadNextProblem(delta) {
@@ -242,13 +270,13 @@ function loadNextProblem(delta) {
     letters.t += 1;
 
     if (letters.scale.x > 10) {
-        ++problemIndex;
-        if (problemIndex >= problems.length) {
+        ++problemCount;
+        if (problemCount >= numberOfProblems) {
             initGameClear();
         }
         else {
             state = loadNextProblem;
-            initPlay();
+            initProblem();
         }
     }
 }
@@ -256,15 +284,37 @@ function loadNextProblem(delta) {
 function initGameClear() {
     intermediary.text = '';
     letters.visible = false;
-    gameClearMessage.visible = true;
+    gameDoneMessage.text = 'げーむくりあ\nなにか キーを おして ください';
+    gameDoneMessage.position.set(
+        app.screen.width / 2,
+        app.screen.height / 2);
+    gameDoneMessage.visible = true;
 
     state = gameClear;
 }
 
 function gameClear(delta) {
     if (typing.getPressedKeys().length > 0) {
-        problemIndex = 0;
-        gameClearMessage.visible = false;
+        gameDoneMessage.visible = false;
         initPlay();
     }
+}
+
+function initGameOver() {
+    gameDoneMessage.text = 'げーむおーばー\nなにか キーを おして ください';
+    gameDoneMessage.position.set(
+        app.screen.width / 2,
+        app.screen.height / 4);
+    gameDoneMessage.visible = true;
+
+    state = gameOver;
+}
+
+function gameOver(delta) {
+    if (typing.getPressedKeys().length > 0) {
+        gameDoneMessage.visible = false;
+        initPlay();
+    }
+
+    moveFallingLetters();
 }
