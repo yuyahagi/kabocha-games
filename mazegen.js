@@ -5,6 +5,7 @@ class Maze {
         this.nx = nx;
         this.ny = ny;
         this.cellsize = 36;
+        this.wallwidth = 2;
 
         if (nx % 2 === 0 || ny % 2 === 0 || nx < 5 || ny < 5)
             throw 'Maze width and height must be odd and >= 5 but were ' + ny + ' by ' + nx;
@@ -27,17 +28,11 @@ class Maze {
     }
 
     toPixiContainer() {
-        // Original wall sprite (squre graphic).
+        // Original wall sprite (square graphic).
         let wall0 = new PIXI.Graphics();
-        wall0.beginFill(0x404040);
-        wall0.lineStyle(4, 0x808080, 0.9);
-        wall0.drawRect(
-            2,
-            2,
-            this.cellsize - 4,
-            this.cellsize - 4);
+        wall0.beginFill(0x808080);
+        wall0.drawRect(0, 0, 1, 1);
         wall0.endFill();
-        wall0.position.set(0, 0);
 
         // Add cloned wall sprites to container.
         let mazeSprite = new PIXI.Container();
@@ -45,10 +40,15 @@ class Maze {
             for (let j = 0; j < this.nx; j++) {
                 if (this.array[i * this.nx + j] !== 0) {
                     let w = wall0.clone();
-                    w.position.set(
-                        j * this.cellsize,
-                        i * this.cellsize);
-                    mazeSprite.addChildAt(w);
+
+                    let x = Math.floor((j + 1) / 2) * this.wallwidth
+                        + Math.floor(j / 2) * this.cellsize;
+                    let y = Math.floor((i + 1) / 2) * this.wallwidth
+                        + Math.floor(i / 2) * this.cellsize;
+                    w.position.set(x, y);
+                    w.width = j % 2 == 0 ? this.wallwidth : this.cellsize;
+                    w.height = i % 2 == 0 ? this.wallwidth : this.cellsize;
+                    mazeSprite.addChild(w);
                 }
             }
         }

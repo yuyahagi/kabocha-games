@@ -16,11 +16,11 @@ function initScreen() {
 function setup() {
     input = new PlayerInput();
     
-    let maze = new Maze(19, 29);
+    let maze = new Maze(21, 31);
     let mazeSprite = maze.toPixiContainer();//drawMaze(maze.array);
 
     mazeSprite.position.set(0, 0);
-    mazeSprite.scale.set(0.5);
+    mazeSprite.scale.set(1);
 
     app.stage.addChild(mazeSprite);
 
