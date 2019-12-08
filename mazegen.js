@@ -2,29 +2,41 @@
 
 class Maze {
     constructor(ny, nx) {
+        // Size of maze.
         this.nx = nx;
         this.ny = ny;
-        this.cellsize = 36;
-        this.wallwidth = 2;
 
-        if (nx % 2 === 0 || ny % 2 === 0 || nx < 5 || ny < 5)
-            throw 'Maze width and height must be odd and >= 5 but were ' + ny + ' by ' + nx;
+        // Size of inner array for the maze.
+        this._innerNx = 2 * nx + 1;
+        this._innerNy  = 2 * ny + 1;
+        this.cellsize = 36;
+        this.wallwidth = 4;
+
+        if (nx < 3 || ny < 3)
+            throw 'Maze width and height must be >= 3 but were ' + ny + ' by ' + nx;
 
         // Initialize 2d array.
-        let maze = new Array(ny * nx);
+        let maze = new Array(this._innerNy * this._innerNx);
         maze = maze.fill(0);
-        for (let i = 0; i < ny; i++) {
+        for (let i = 0; i < this._innerNy; i++) {
             // Left and right walls.
-            maze[i * nx + 0] = 1;
-            maze[(i + 1) * nx - 1] = 1;
+            maze[i * this._innerNx + 0] = 1;
+            maze[(i + 1) * this._innerNx - 1] = 1;
         }
         // Top and bottom walls.
-        maze.fill(1, 0, nx);
-        maze.fill(1, (ny - 1) * nx, ny * nx);
+        maze.fill(1, 0, this._innerNx);
+        maze.fill(1, (this._innerNy - 1) * this._innerNx, this._innerNy * this._innerNx);
 
-        generateMaze(maze, ny, nx);
+        generateMaze(maze, this._innerNy, this._innerNx);
 
         this.array = maze;
+    }
+
+    indexToPosition(i, j) {
+        return {
+            x: (j + 1) * this.wallwidth + j * this.cellsize,
+            y: (i + 1) * this.wallwidth + i * this.cellsize
+        };
     }
 
     toPixiContainer() {
@@ -36,20 +48,39 @@ class Maze {
 
         // Add cloned wall sprites to container.
         let mazeSprite = new PIXI.Container();
-        for (let i = 0; i < this.ny; i++) {
-            for (let j = 0; j < this.nx; j++) {
-                if (this.array[i * this.nx + j] !== 0) {
-                    let w = wall0.clone();
+        const placeCell = (pos, di, dj) => {
+            let w = wall0.clone();
+            w.position.set(
+                pos.x + dj * this.wallwidth,
+                pos.y + di * this.wallwidth);
+            w.width = dj % 2 == 0 ? this.cellsize : this.wallwidth;
+            w.height = di % 2 == 0 ? this.cellsize : this.wallwidth;
+            mazeSprite.addChild(w);
+        }
 
-                    let x = Math.floor((j + 1) / 2) * this.wallwidth
-                        + Math.floor(j / 2) * this.cellsize;
-                    let y = Math.floor((i + 1) / 2) * this.wallwidth
-                        + Math.floor(i / 2) * this.cellsize;
-                    w.position.set(x, y);
-                    w.width = j % 2 == 0 ? this.wallwidth : this.cellsize;
-                    w.height = i % 2 == 0 ? this.wallwidth : this.cellsize;
-                    mazeSprite.addChild(w);
-                }
+        // Iterate through each cell as it appears (even indices in the inner array),
+        // and add surrounding walls for each.
+        for (let i = 0; i < this.ny + 1; i++) {
+            for (let j = 0; j < this.nx + 1; j++) {
+                const pos = this.indexToPosition(i, j);
+                // Top-left.
+                if (this.array[(2 * i + 0) * this._innerNx + (2 * j + 0)] !== 0)
+                    placeCell(pos, -1, -1);
+
+                // Top.
+                if (j < this.nx
+                    && this.array[(2 * i + 0) * this._innerNx + (2 * j + 1)] !== 0)
+                    placeCell(pos, -1, 0);
+
+                // Left.
+                if (i < this.ny
+                    && this.array[(2 * i + 1) * this._innerNx + (2 * j + 0)] !== 0)
+                    placeCell(pos, 0, -1);
+
+                // Self.
+                if (i < this.ny && j < this.nx
+                    && this.array[(2 * i + 1) * this._innerNx + (2 * j + 1)] !== 0)
+                    placeCell(pos, 0, 0);
             }
         }
 
