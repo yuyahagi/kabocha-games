@@ -3,6 +3,7 @@
 let app;
 let input;
 let state;
+let player;
 
 const Directions = {
     down: 0,
@@ -120,23 +121,21 @@ function initScreen() {
     mainDiv.appendChild(app.view);
 }
 
-let player;
 function setup() {
     input = new PlayerInput();
     
-    let maze = new Maze(10, 15);
+    let maze = new Maze(15, 20);
     let mazeSprite = maze.toPixiContainer();//drawMaze(maze.array);
-
-    mazeSprite.position.set(0, 0);
-    mazeSprite.scale.set(1);
-
     app.stage.addChild(mazeSprite);
+    mazeSprite.scale.set(0.75);
+    mazeSprite.position.set(
+        (app.screen.width - mazeSprite.width) / 2,
+        (app.screen.height - mazeSprite.height) / 2);
 
     player = new MazeCharacter(maze, { x: 0, y: 0 }, 'images/majo.png');
-    app.stage.addChild(player);
+    mazeSprite.addChild(player);
 
     state = play;
-
     app.ticker.add(delta => gameLoop(delta));
 }
 
