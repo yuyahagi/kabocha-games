@@ -39,6 +39,12 @@ class Maze {
         };
     }
 
+    canMove(pos, dx, dy) {
+        const j = 2 * pos.x + 1 + dx;
+        const i = 2 * pos.y + 1 + dy;
+        return this.array[i * this._innerNx + j] === 0;
+    }
+
     toPixiContainer() {
         // Original wall sprite (square graphic).
         let wall0 = new PIXI.Graphics();
