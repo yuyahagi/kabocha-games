@@ -4,7 +4,9 @@ let app;
 let input;
 let state;
 let player;
-let enemies = [];
+let enemies;
+let mazeScene;
+let gameDoneScene;
 
 const Directions = {
     down: 0,
@@ -128,6 +130,24 @@ class MazeCharacter extends PIXI.Container {
         if (direction === Directions.right) return [1, 0];
         if (direction === Directions.up) return [0, -1];
     }
+
+    static areHitRect(c1, c2) {
+        // Center-to-center distance.
+        let cx1 = c1.x + 0.5 * c1.width;
+        let cx2 = c2.x + 0.5 * c2.width;
+        let cy1 = c1.y + 0.5 * c1.height;
+        let cy2 = c2.y + 0.5 * c2.height;
+        let dx = Math.abs(cx2 - cx1);
+        let dy = Math.abs(cy2 - cy1);
+
+        let halfWidth = 0.5 * (c1.width + c2.width);
+        let halfHeight = 0.5 * (c1.height + c2.height);
+
+        if (dx < halfWidth && dy < halfHeight)
+            return true;
+        else
+            return false;
+    }
 }
 
 class EnemyCharacter extends MazeCharacter {
@@ -183,19 +203,54 @@ function initScreen() {
 
 function setup() {
     input = new PlayerInput();
+    state = delta => { };
+    app.ticker.add(gameLoop);
+
+    gameDoneScene = new PIXI.Container();
+    app.stage.addChild(gameDoneScene);
     
+    let gameDoneMessage = new PIXI.Text(
+        'Message',
+        {
+            fontFamily: 'Arial',
+            fontSize: '36px',
+            fill: '#ffffff',
+            align: 'center',
+        });
+    gameDoneMessage.anchor.set(0.5);
+    gameDoneScene.addChild(gameDoneMessage);
+    gameDoneScene.message = gameDoneMessage;
+
+    gameDoneScene.position.set(
+        app.screen.width / 2,
+        app.screen.height / 2);
+
+    initPlay();
+}
+
+function gameLoop(delta) {
+    state(delta);
+}
+
+function initPlay() {
+    gameDoneScene.visible = false;
+    app.stage.removeChild(mazeScene);
+
+    // Create a scene container for the maze and characters.
+    // To display messages above it, place it at a low index.
     let maze = new Maze(20, 30);
-    let mazeSprite = maze.toPixiContainer();//drawMaze(maze.array);
-    app.stage.addChild(mazeSprite);
-    mazeSprite.scale.set(0.5);
-    mazeSprite.position.set(
-        (app.screen.width - mazeSprite.width) / 2,
-        (app.screen.height - mazeSprite.height) / 2);
+    mazeScene = maze.toPixiContainer();
+    app.stage.addChildAt(mazeScene, 0);
+    mazeScene.scale.set(0.5);
+    mazeScene.position.set(
+        (app.screen.width - mazeScene.width) / 2,
+        (app.screen.height - mazeScene.height) / 2);
 
     player = new MazeCharacter(maze, { x: 0, y: 0 }, 'images/majo.png');
-    mazeSprite.addChild(player);
+    mazeScene.addChild(player);
 
     if (maze.nx < 10) throw 'No space to place enemies.';
+    enemies = [];
     for (let i = 0; i < 10; i++) {
         let startCoords;
         do {
@@ -209,20 +264,34 @@ function setup() {
             startCoords,
             'images/kabocha.png');
         enemies.push(enemy);
-        mazeSprite.addChildAt(enemy);
+        mazeScene.addChildAt(enemy);
     }
 
     state = play;
-    app.ticker.add(delta => gameLoop(delta));
-}
-
-function gameLoop(delta) {
-    state(delta);
 }
 
 function play(delta) {
     player.move(delta, input.arrowX, input.arrowY);
+
+    let isHit = false;
     enemies.forEach(enemy => {
         enemy.moveEnemy(delta);
+        isHit |= MazeCharacter.areHitRect(player, enemy);
     });
+
+    if (isHit)
+        initGameOver();
+}
+
+function initGameOver() {
+    gameDoneScene.visible = true;
+
+    gameDoneScene.message.text = 'げーむおーばー\nもういちど あそぶには\nENTER キーを おして ください';
+
+    state = gameDone;
+}
+
+function gameDone(delta) {
+    if (input.pressedZ || input.pressedX || input.pressedEnter)
+        initPlay();
 }
