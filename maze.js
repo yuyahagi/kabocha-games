@@ -4,12 +4,20 @@ let app;
 let input;
 let state;
 let player;
+let enemies = [];
 
 const Directions = {
     down: 0,
     left: 1,
     right: 2,
-    up: 3
+    up: 3,
+
+    reverse: dir => {
+        if (dir === Directions.down) return Directions.up;
+        if (dir === Directions.left) return Directions.right;
+        if (dir === Directions.right) return Directions.left;
+        if (dir === Directions.up) return Directions.down;
+    }
 };
 
 class MazeCharacter extends PIXI.Container {
@@ -49,6 +57,12 @@ class MazeCharacter extends PIXI.Container {
         this.position = position;
     }
 
+    get canMoveForward() {
+        let dx, dy;
+        [dx, dy] = MazeCharacter.directionToSteps(this.direction);
+        return this.maze.canMove(this.coords, dx, dy);
+    }
+
     move(delta, inputx, inputy) {
         if (this.moveCounter <= 0) {
             // Player being stopped.
@@ -82,7 +96,7 @@ class MazeCharacter extends PIXI.Container {
                 this.lastCoords.y = this.coords.y;
                 this.coords.x += dx;
                 this.coords.y += dy;
-                this.direction = this.stepsToDirection(dx, dy);
+                this.direction = MazeCharacter.stepsToDirection(dx, dy);
 
                 this.moveCounter = this.moveTime;
             }
@@ -101,11 +115,56 @@ class MazeCharacter extends PIXI.Container {
         this.currentCell.position.y = p.y - this.position.y;
     }
 
-    stepsToDirection(dx, dy) {
+    static stepsToDirection(dx, dy) {
         if (dx < 0) return Directions.left;
         if (dx > 0) return Directions.right;
-        if (dy < 0) return Directions.down;
-        if (dy > 0) return Directions.up;
+        if (dy < 0) return Directions.up;
+        if (dy > 0) return Directions.down;
+    }
+
+    static directionToSteps(direction) {
+        if (direction === Directions.down) return [0, 1];
+        if (direction === Directions.left) return [-1, 0];
+        if (direction === Directions.right) return [1, 0];
+        if (direction === Directions.up) return [0, -1];
+    }
+}
+
+class EnemyCharacter extends MazeCharacter {
+    constructor(maze, startPos, imgPath) {
+        super(maze, startPos, imgPath);
+    }
+
+    moveEnemy(delta) {
+        if (this.moveCounter > 0) {
+            this.move(delta, 0, 0);
+            return;
+        }
+
+        const branches = this.countBranches();
+        const opposite = Directions.reverse(this.direction);
+        if (branches === 1) {
+            while (!this.canMoveForward)
+                this.direction = (this.direction + 1) % 4;
+        }
+        else if (branches > 2 || !this.canMoveForward) {
+            do {
+                this.direction = Math.floor(Math.random() * 4);
+            } while (!this.canMoveForward || this.direction === opposite);
+        }
+
+        let dx, dy;
+        [dx, dy] = MazeCharacter.directionToSteps(this.direction);
+        this.move(delta, dx, dy);
+    }
+
+    countBranches() {
+        let n = 0;
+        if (this.maze.canMove(this.coords, -1, 0)) n++;
+        if (this.maze.canMove(this.coords, 1, 0)) n++;
+        if (this.maze.canMove(this.coords, 0, -1)) n++;
+        if (this.maze.canMove(this.coords, 0, 1)) n++;
+        return n;
     }
 }
 
@@ -113,7 +172,8 @@ function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });
     app.loader
         .add([
-            'images/majo.png'
+            'images/majo.png',
+            'images/kabocha.png',
         ])
         .load(setup);
     
@@ -124,16 +184,33 @@ function initScreen() {
 function setup() {
     input = new PlayerInput();
     
-    let maze = new Maze(15, 20);
+    let maze = new Maze(20, 30);
     let mazeSprite = maze.toPixiContainer();//drawMaze(maze.array);
     app.stage.addChild(mazeSprite);
-    mazeSprite.scale.set(0.75);
+    mazeSprite.scale.set(0.5);
     mazeSprite.position.set(
         (app.screen.width - mazeSprite.width) / 2,
         (app.screen.height - mazeSprite.height) / 2);
 
     player = new MazeCharacter(maze, { x: 0, y: 0 }, 'images/majo.png');
     mazeSprite.addChild(player);
+
+    if (maze.nx < 10) throw 'No space to place enemies.';
+    for (let i = 0; i < 10; i++) {
+        let startCoords;
+        do {
+            startCoords = {
+                x: Math.floor(Math.random() * maze.nx),
+                y: Math.floor(Math.random() * maze.ny)
+            };
+        } while (startCoords.x + startCoords.y < 10);
+        let enemy = new EnemyCharacter(
+            maze,
+            startCoords,
+            'images/kabocha.png');
+        enemies.push(enemy);
+        mazeSprite.addChildAt(enemy);
+    }
 
     state = play;
     app.ticker.add(delta => gameLoop(delta));
@@ -145,4 +222,7 @@ function gameLoop(delta) {
 
 function play(delta) {
     player.move(delta, input.arrowX, input.arrowY);
+    enemies.forEach(enemy => {
+        enemy.moveEnemy(delta);
+    });
 }
