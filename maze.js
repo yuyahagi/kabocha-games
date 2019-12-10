@@ -23,7 +23,7 @@ const Directions = {
 };
 
 class MazeCharacter extends PIXI.Container {
-    constructor(maze, startPos, imgPath) {
+    constructor(maze, startPos, directionTextures) {
         super();
 
         // Associated Maze object
@@ -50,19 +50,14 @@ class MazeCharacter extends PIXI.Container {
         this.addChild(currentCell);
 
         // Character sprite.
-        let texture = PIXI.utils.TextureCache[imgPath];
-        texture.frame = new PIXI.Rectangle(0, 0, 32, 32);
-        let sprite = new PIXI.Sprite(texture);
-        this.addChild(sprite);
+        this.directionTextures = directionTextures;
+        this.sprite = new PIXI.AnimatedSprite(directionTextures[this.direction]);
+        this.sprite.animationSpeed = 0.1;
+        this.sprite.play();
+        this.addChild(this.sprite);
         
         const position = maze.indexToPosition(this.coords.y, this.coords.x);
         this.position = position;
-    }
-
-    get canMoveForward() {
-        let dx, dy;
-        [dx, dy] = MazeCharacter.directionToSteps(this.direction);
-        return this.maze.canMove(this.coords, dx, dy);
     }
 
     move(delta, inputx, inputy) {
@@ -93,14 +88,25 @@ class MazeCharacter extends PIXI.Container {
                     dy = inputy;
             }
 
+            let newDirection;
             if (dx !== 0 || dy !== 0) {
                 this.lastCoords.x = this.coords.x;
                 this.lastCoords.y = this.coords.y;
                 this.coords.x += dx;
                 this.coords.y += dy;
-                this.direction = MazeCharacter.stepsToDirection(dx, dy);
+                newDirection = this.stepsToDirection(dx, dy);
 
                 this.moveCounter = this.moveTime;
+            }
+            else {
+                newDirection = this.stepsToDirection(inputx, inputy);
+            }
+
+            // When changing direction, change the animation textures too.
+            if (newDirection !== this.direction) {
+                this.direction = newDirection;
+                this.sprite.textures = this.directionTextures[newDirection];
+                this.sprite.play();
             }
         }
         else {
@@ -117,11 +123,12 @@ class MazeCharacter extends PIXI.Container {
         this.currentCell.position.y = p.y - this.position.y;
     }
 
-    static stepsToDirection(dx, dy) {
+    stepsToDirection(dx, dy) {
         if (dx < 0) return Directions.left;
         if (dx > 0) return Directions.right;
         if (dy < 0) return Directions.up;
         if (dy > 0) return Directions.down;
+        return this.direction;
     }
 
     static directionToSteps(direction) {
@@ -151,8 +158,8 @@ class MazeCharacter extends PIXI.Container {
 }
 
 class EnemyCharacter extends MazeCharacter {
-    constructor(maze, startPos, imgPath) {
-        super(maze, startPos, imgPath);
+    constructor(maze, startPos, directionTextures) {
+        super(maze, startPos, directionTextures);
     }
 
     moveEnemy(delta) {
@@ -163,18 +170,20 @@ class EnemyCharacter extends MazeCharacter {
 
         const branches = this.countBranches();
         const opposite = Directions.reverse(this.direction);
+        let newDirection = this.direction;
         if (branches === 1) {
-            while (!this.canMoveForward)
-                this.direction = (this.direction + 1) % 4;
+            while (!this.maze.canMoveToward(this.coords, newDirection))
+                newDirection = (newDirection + 1) % 4;
         }
         else if (branches > 2 || !this.canMoveForward) {
             do {
-                this.direction = Math.floor(Math.random() * 4);
-            } while (!this.canMoveForward || this.direction === opposite);
+                newDirection = Math.floor(Math.random() * 4);
+            } while (!this.maze.canMoveToward(this.coords, newDirection)
+                || newDirection === opposite);
         }
 
         let dx, dy;
-        [dx, dy] = MazeCharacter.directionToSteps(this.direction);
+        [dx, dy] = MazeCharacter.directionToSteps(newDirection);
         this.move(delta, dx, dy);
     }
 
@@ -192,8 +201,8 @@ function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });
     app.loader
         .add([
-            'images/majo.png',
-            'images/kabocha.png',
+            "images/majo.json",
+            'images/kabocha.json',
         ])
         .load(setup);
     
@@ -238,33 +247,68 @@ function initPlay() {
 
     // Create a scene container for the maze and characters.
     // To display messages above it, place it at a low index.
-    let maze = new Maze(20, 30);
+    let maze = new Maze(15, 20);
     mazeScene = maze.toPixiContainer();
     app.stage.addChildAt(mazeScene, 0);
-    mazeScene.scale.set(0.5);
+    mazeScene.scale.set(0.75);
     mazeScene.position.set(
         (app.screen.width - mazeScene.width) / 2,
         (app.screen.height - mazeScene.height) / 2);
 
-    player = new MazeCharacter(maze, { x: 0, y: 0 }, 'images/majo.png');
-    mazeScene.addChild(player);
+    // Load animation frames for player sprite.
+    {
+        let directionTextures = new Array(4);
+    
+        directionTextures[Directions.down] = [];
+        for (let f = 0; f < 3; f++) {
+            let texture = PIXI.utils.TextureCache[`majo_down_${f + 1}.png`];
+            directionTextures[Directions.down].push(texture);
+        }
+        directionTextures[Directions.left] = [];
+        for (let f = 0; f < 3; f++) {
+            let texture = PIXI.utils.TextureCache[`majo_left_${f + 1}.png`];
+            directionTextures[Directions.left].push(texture);
+        }
+        directionTextures[Directions.right] = [];
+        for (let f = 0; f < 3; f++) {
+            let texture = PIXI.utils.TextureCache[`majo_right_${f + 1}.png`];
+            directionTextures[Directions.right].push(texture);
+        }
+        directionTextures[Directions.up] = [];
+        for (let f = 0; f < 3; f++) {
+            let texture = PIXI.utils.TextureCache[`majo_up_${f + 1}.png`];
+            directionTextures[Directions.up].push(texture);
+        }
 
-    if (maze.nx < 10) throw 'No space to place enemies.';
-    enemies = [];
-    for (let i = 0; i < 10; i++) {
-        let startCoords;
-        do {
-            startCoords = {
-                x: Math.floor(Math.random() * maze.nx),
-                y: Math.floor(Math.random() * maze.ny)
-            };
-        } while (startCoords.x + startCoords.y < 10);
-        let enemy = new EnemyCharacter(
-            maze,
-            startCoords,
-            'images/kabocha.png');
-        enemies.push(enemy);
-        mazeScene.addChildAt(enemy);
+        player = new MazeCharacter(maze, { x: 0, y: 0 }, directionTextures);
+        mazeScene.addChild(player);
+    }
+
+    {
+        if (maze.nx < 10) throw 'No space to place enemies.';
+        let directionTextures = new Array(4);
+        directionTextures[Directions.down]
+            = [PIXI.utils.TextureCache['kabocha_down_2.png']];
+        directionTextures[Directions.left]
+            = [PIXI.utils.TextureCache['kabocha_left_2.png']];
+        directionTextures[Directions.right]
+            = [PIXI.utils.TextureCache['kabocha_right_2.png']];
+        directionTextures[Directions.up]
+            = [PIXI.utils.TextureCache['kabocha_up_2.png']];
+
+        enemies = [];
+        for (let i = 0; i < 4; i++) {
+            let startCoords;
+            do {
+                startCoords = {
+                    x: Math.floor(Math.random() * maze.nx),
+                    y: Math.floor(Math.random() * maze.ny)
+                };
+            } while (startCoords.x + startCoords.y < 10);
+            let enemy = new EnemyCharacter(maze, startCoords, directionTextures);
+            enemies.push(enemy);
+            mazeScene.addChild(enemy);
+        }
     }
 
     state = play;
@@ -279,8 +323,10 @@ function play(delta) {
         isHit |= MazeCharacter.areHitRect(player, enemy);
     });
 
-    if (isHit)
+    if (isHit) {
+        player.sprite.stop();
         initGameOver();
+    }
 }
 
 function initGameOver() {

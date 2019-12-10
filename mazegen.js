@@ -39,10 +39,17 @@ class Maze {
         };
     }
 
-    canMove(pos, dx, dy) {
-        const j = 2 * pos.x + 1 + dx;
-        const i = 2 * pos.y + 1 + dy;
+    canMove(coords, dx, dy) {
+        const j = 2 * coords.x + 1 + dx;
+        const i = 2 * coords.y + 1 + dy;
         return this.array[i * this._innerNx + j] === 0;
+    }
+
+    canMoveToward(coords, direction) {
+        if (direction === Directions.down) return this.canMove(coords, 0, 1);
+        if (direction === Directions.left) return this.canMove(coords, -1, 0);
+        if (direction === Directions.right) return this.canMove(coords, 1, 0);
+        if (direction === Directions.up) return this.canMove(coords, 0, -1);
     }
 
     toPixiContainer() {
