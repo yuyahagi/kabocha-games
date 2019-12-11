@@ -1,6 +1,5 @@
 'use strict'
 
-const numberOfEnemies = 3;
 
 let app;
 let input;
@@ -9,6 +8,8 @@ let player;
 let enemies;
 let items;
 let letters;
+let currentLevel;
+let levels;
 let mazeScene;
 let gameDoneScene;
 
@@ -244,6 +245,7 @@ class EnemyCharacter extends MazeCharacter {
 function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });
     app.loader
+        .add('levels', 'mazelevels.json')
         .add([
             "images/majo.json",
             'images/kabocha.json',
@@ -254,7 +256,10 @@ function initScreen() {
     mainDiv.appendChild(app.view);
 }
 
-function setup() {
+function setup(loader, resources) {
+    levels = resources.levels.data.levels;
+    currentLevel = 0;
+
     input = new PlayerInput();
     state = delta => { };
     app.ticker.add(gameLoop);
@@ -288,10 +293,13 @@ function gameLoop(delta) {
 function initPlay() {
     gameDoneScene.visible = false;
     app.stage.removeChild(mazeScene);
+    app.stage.removeChild(letters);
+
+    let level = levels[currentLevel];
 
     // Create a scene container for the maze and characters.
     // To display messages above it, place it at a low index.
-    let maze = new Maze(15, 20);
+    let maze = new Maze(level.ny, level.nx);
     mazeScene = maze.toPixiContainer();
     app.stage.addChildAt(mazeScene, 0);
     mazeScene.scale.set(0.7);
@@ -330,17 +338,28 @@ function initPlay() {
 
     // Place items in the maze.
     {
-        let text = 'あいうえお';
         items = [];
-        for (let i = 0; i < text.length; i++) {
+        let xpos, ypos;
+        if (level.tutorial) {
+            level.letters = "もじをあつめてね";
+            level.enemies = 0;
+
+            xpos = i => 2 + i;
+            ypos = i => 0;
+        }
+        else {
+            xpos = i => Math.floor(Math.random() * maze.nx);
+            ypos = i => Math.floor(Math.random() * maze.ny);
+        }
+        for (let i = 0; i < level.letters.length; i++) {
             let item = new MazeObject(
                 maze,
                 {
-                    x: Math.floor(Math.random() * maze.nx),
-                    y: Math.floor(Math.random() * maze.ny)
+                    x: xpos(i),
+                    y: ypos(i)
                 },
                 new PIXI.Text(
-                    text[i],
+                    level.letters[i],
                     {
                         fontFamily: 'Arial',
                         fontSize: '32px',
@@ -350,7 +369,7 @@ function initPlay() {
             mazeScene.addChild(item);
         }
 
-        letters = new Word(text, 32, false);
+        letters = new Word(level.letters, 32, false);
         letters.pivot.set(letters.width / 2, 0);
         letters.position.set(
             app.screen.width / 2,
@@ -358,8 +377,9 @@ function initPlay() {
         app.stage.addChild(letters);
     }
 
-    if (numberOfEnemies > 0) {
-        if (maze.nx < 10) throw 'No space to place enemies.';
+    enemies = [];
+    if (level.enemies > 0) {
+        if (maze.nx + maze.ny < 10) throw 'No space to place enemies.';
         let directionTextures = new Array(4);
         directionTextures[Directions.down]
             = [PIXI.utils.TextureCache['kabocha_down_2.png']];
@@ -370,8 +390,7 @@ function initPlay() {
         directionTextures[Directions.up]
             = [PIXI.utils.TextureCache['kabocha_up_2.png']];
 
-        enemies = [];
-        for (let i = 0; i < numberOfEnemies; i++) {
+        for (let i = 0; i < level.enemies; i++) {
             let startCoords;
             do {
                 startCoords = {
@@ -419,13 +438,20 @@ function play(delta) {
 
 function initLevelClear() {
     gameDoneScene.visible = true;
-    gameDoneScene.message.text = 'すてーじ くりあ\nもういちど あそぶには\nENTER キーを おして ください';
+    if (currentLevel < levels.length - 1) {
+        gameDoneScene.message.text = `すてーじ ${currentLevel} くりあ\nENTER キーで つぎの レベル`;
+        ++currentLevel;
+    }
+    else {
+        gameDoneScene.message.text = `すべての すてーじ くりあ\nさいしょに もどるには\nENTER キーを おして ください`;
+        currentLevel = 1;
+    }
     state = gameDone;
 }
 
 function initGameOver() {
     gameDoneScene.visible = true;
-    gameDoneScene.message.text = 'げーむおーばー\nもういちど あそぶには\nENTER キーを おして ください';
+    gameDoneScene.message.text = `すてーじ ${currentLevel} げーむおーばー\nもういちど あそぶには\nENTER キーを おして ください`;
     state = gameDone;
 }
 

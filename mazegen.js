@@ -12,8 +12,8 @@ class Maze {
         this.cellsize = 36;
         this.wallwidth = 4;
 
-        if (nx < 3 || ny < 3)
-            throw 'Maze width and height must be >= 3 but were ' + ny + ' by ' + nx;
+        if (nx < 1 || ny < 1)
+            throw 'Maze width and height must be positive integers but were ' + ny + ' by ' + nx;
 
         // Initialize 2d array.
         let maze = new Array(this._innerNy * this._innerNx);

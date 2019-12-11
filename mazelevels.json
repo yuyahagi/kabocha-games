@@ -1,0 +1,15 @@
+{
+    "levels": [
+        { "nx": 10, "ny": 1, "tutorial": true },
+        { "nx": 5, "ny": 3, "letters": "123", "enemies": 0 },
+        { "nx": 16, "ny": 12, "letters": "にげろー", "enemies": 1 },
+        { "nx": 16, "ny": 12, "letters": "まなつ", "enemies": 1 },
+        { "nx": 16, "ny": 12, "letters": "めいろ", "enemies": 1 },
+        { "nx": 20, "ny": 15, "letters": "むし", "enemies": 2 },
+        { "nx": 20, "ny": 15, "letters": "もみじ", "enemies": 2 },
+        { "nx": 12, "ny": 12, "letters": "せまい", "enemies": 2 },
+        { "nx": 9, "ny": 9, "letters": "みにさいず", "enemies": 1 },
+        { "nx": 20, "ny": 15, "letters": "ひろい", "enemies": 2 },
+        { "nx": 20, "ny": 15, "letters": "かぼちゃ", "enemies": 3 }
+    ]
+}
