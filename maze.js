@@ -8,7 +8,7 @@ let state;
 let player;
 let enemies;
 let items;
-let remainingItems;
+let letters;
 let mazeScene;
 let gameDoneScene;
 
@@ -294,10 +294,10 @@ function initPlay() {
     let maze = new Maze(15, 20);
     mazeScene = maze.toPixiContainer();
     app.stage.addChildAt(mazeScene, 0);
-    mazeScene.scale.set(0.75);
+    mazeScene.scale.set(0.7);
     mazeScene.position.set(
         (app.screen.width - mazeScene.width) / 2,
-        (app.screen.height - mazeScene.height) / 2);
+        ((app.screen.height - 48) - mazeScene.height) / 2);
 
     // Load animation frames for player sprite.
     {
@@ -330,9 +330,9 @@ function initPlay() {
 
     // Place items in the maze.
     {
-        let word = 'あいうえお';
+        let text = 'あいうえお';
         items = [];
-        for (let i = 0; i < word.length; i++) {
+        for (let i = 0; i < text.length; i++) {
             let item = new MazeObject(
                 maze,
                 {
@@ -340,7 +340,7 @@ function initPlay() {
                     y: Math.floor(Math.random() * maze.ny)
                 },
                 new PIXI.Text(
-                    word[i],
+                    text[i],
                     {
                         fontFamily: 'Arial',
                         fontSize: '32px',
@@ -350,7 +350,12 @@ function initPlay() {
             mazeScene.addChild(item);
         }
 
-        remainingItems = items.length;
+        letters = new Word(text, 32, false);
+        letters.pivot.set(letters.width / 2, 0);
+        letters.position.set(
+            app.screen.width / 2,
+            app.screen.height - 48);
+        app.stage.addChild(letters);
     }
 
     if (numberOfEnemies > 0) {
@@ -389,11 +394,9 @@ function play(delta) {
     items.forEach((item, index) => {
         item.update(delta);
         if (MazeObject.areHitRect(player, item)) {
-            if (item.disappearCounter == 0)
-                remainingItems--;
-            item.disappear();
-
-            if (items.length == 0)
+            if (letters.fill(item.sprite.text))
+                item.disappear();
+            if (letters.allFilled)
                 player.invincible = true;
         }
     });
@@ -404,7 +407,7 @@ function play(delta) {
         isHit |= MazeObject.areHitRect(player, enemy);
     });
 
-    if (remainingItems == 0 && player.moveCounter <= 0) {
+    if (letters.allFilled && player.moveCounter <= 0) {
         initLevelClear();
     }
 

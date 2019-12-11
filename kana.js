@@ -18,74 +18,6 @@ let gameDoneMessage;
 let romajiParser;
 let startTime;
 
-class Letter extends PIXI.Text {
-    constructor(text, fill = '#404040', stroke = '#606060') {
-        super(
-            text,
-            {
-                fontFamily: 'Arial',
-                fontSize: '48px',
-                fontWeight: 'bold',
-                align: 'center',
-                fill: fill,
-                stroke: stroke,
-                strokeThickness: 3,
-            });
-        
-        this.margin = 6;
-    }
-}
-
-class Word extends PIXI.Container {
-    constructor(text) {
-        super();
-
-        // List of auxiliary letters that attach to the normal ones.
-        const a = ['ゃ', 'ゅ', 'ょ', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ'];
-
-        let pos = 0;
-        while (pos < text.length) {
-            // The letter to be rendered.
-            // Also append the next letter if:
-            //   * This letter is a sokuon ('っ')
-            //   * or the next letter is a small one (e.g., 'ゃ').
-            let c = text[pos++];
-            if (pos < text.length && c === 'っ')
-                c += text[pos++];
-            if (pos < text.length && a.includes(text[pos]))
-                c += text[pos++];
-            
-            let letter = new Letter(c, '#404040', '#606060');
-            letter.x = this.width == 0 ? 0 : this.width + letter.margin;
-            this.addChild(letter);
-        };
-        this.cursor = 0;
-    }
-
-    getLetterAt(idx) {
-        return this.children[idx];
-    }
-
-    fill(c) {
-        let unfilledLetter = this.children[this.cursor];
-        if (c === unfilledLetter.text) {
-            let newLetter = new Letter(unfilledLetter.text, '#ffffff', '#000000');
-            newLetter.x = unfilledLetter.x;
-            this.removeChildAt(this.cursor);
-            this.addChildAt(newLetter, this.cursor);
-
-            this.cursor++;
-            return true;
-        }
-        else
-            return false;
-    }
-
-    get allFilled() {
-        return this.cursor >= this.children.length;
-    }
-}
-
 function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });
     app.loader
@@ -174,7 +106,7 @@ function initProblem() {
 }
 
 function fillLetter(index, c) {
-    let newLetter = new Letter(c, '#ffffff', '#000000')
+    let newLetter = new Letter(c, '#ffffff')
     newLetter.x = 0;
     letters.addChild(newLetter);
 
@@ -233,7 +165,7 @@ function play(delta) {
                 startingPosition.x += correctLetter.width / 2;
                 startingPosition.y += correctLetter.height / 2;
 
-                let l = new Letter(nextInput, '#ffffff', '#000000');
+                let l = new Letter(nextInput, '#ffffff');
                 l.x = startingPosition.x;
                 l.y = startingPosition.y;
                 l.anchor.set(0.5);
