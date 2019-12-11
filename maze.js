@@ -1,10 +1,14 @@
 'use strict'
 
+const numberOfEnemies = 3;
+
 let app;
 let input;
 let state;
 let player;
 let enemies;
+let items;
+let remainingItems;
 let mazeScene;
 let gameDoneScene;
 
@@ -22,23 +26,88 @@ const Directions = {
     }
 };
 
-class MazeCharacter extends PIXI.Container {
-    constructor(maze, startPos, directionTextures) {
+class MazeObject extends PIXI.Container {
+    constructor(maze, coords, sprite) {
         super();
-
         // Associated Maze object
         this.maze = maze;
 
         // X and Y coordinates in the maze and direction.
+        this.coords = { x: coords.x, y: coords.y };
+        const position = maze.indexToPosition(this.coords.y, this.coords.x);
+        // this.position = position;
+        sprite.anchor.set(0.5);
+        this.position.set(
+            position.x + maze.cellsize / 2,
+            position.y + maze.cellsize / 2);
+
+        this.sprite = sprite;
+        this.addChild(sprite);
+
+        this.invincible = false;
+
+        this.disappearTime = 15;
+        this.disappearCounter = 0;
+    }
+
+    update(delta) {
+        if (this.disappearCounter > 0) {
+            let t = 1 - this.disappearCounter / this.disappearTime;
+            this.sprite.scale.set(1 + t);
+            this.sprite.rotation = 10 * t ** 2;
+            this.disappearCounter -= delta;
+            if (this.disappearCounter < 0) {
+                this.disappearCounter = 0;
+                this.parent.removeChild(this);
+            }
+        }
+    }
+
+    disappear() {
+        this.invincible = true;
+        this.disappearCounter = this.disappearTime;
+    }
+
+    static areHitRect(c1, c2) {
+        if (c1.invincible || c2.invincible)
+            return false;
+        
+        // Center-to-center distance.
+        let cx1 = c1.x + 0.5 * c1.width;
+        let cx2 = c2.x + 0.5 * c2.width;
+        let cy1 = c1.y + 0.5 * c1.height;
+        let cy2 = c2.y + 0.5 * c2.height;
+        let dx = Math.abs(cx2 - cx1);
+        let dy = Math.abs(cy2 - cy1);
+
+        let halfWidth = 0.5 * (c1.width + c2.width);
+        let halfHeight = 0.5 * (c1.height + c2.height);
+
+        if (dx < halfWidth && dy < halfHeight)
+            return true;
+        else
+            return false;
+    }
+}
+
+class MazeCharacter extends MazeObject {
+    constructor(maze, startPos, directionTextures) {
+        // Character sprite.
+        let sprite = new PIXI.AnimatedSprite(directionTextures[Directions.down]);
+        sprite.animationSpeed = 0.1;
+        sprite.play();
+        super(maze, startPos, sprite);
+        
+        this.directionTextures = directionTextures;
+
         // The last coordinates are used for smoothly moving the sprite.
-        this.coords = { x: startPos.x, y: startPos.y };
         this.lastCoords = { x: startPos.x, y: startPos.y };
         this.direction = Directions.down;
 
         // Iterations for a single move.
         this.moveTime = 15;
 
-        // A counter for smoothly moving to the next position.
+        // Counters for smoothly moving to the next position.
         this.moveCounter = 0;
 
         // For debugging.
@@ -49,15 +118,6 @@ class MazeCharacter extends PIXI.Container {
         this.currentCell = currentCell;
         this.addChild(currentCell);
 
-        // Character sprite.
-        this.directionTextures = directionTextures;
-        this.sprite = new PIXI.AnimatedSprite(directionTextures[this.direction]);
-        this.sprite.animationSpeed = 0.1;
-        this.sprite.play();
-        this.addChild(this.sprite);
-        
-        const position = maze.indexToPosition(this.coords.y, this.coords.x);
-        this.position = position;
     }
 
     move(delta, inputx, inputy) {
@@ -116,8 +176,9 @@ class MazeCharacter extends PIXI.Container {
 
         const p0 = this.maze.indexToPosition(this.lastCoords.y, this.lastCoords.x);
         const p = this.maze.indexToPosition(this.coords.y, this.coords.x);
-        this.position.x = p .x - this.moveCounter / this.moveTime * (p.x - p0.x);
-        this.position.y = p .y - this.moveCounter / this.moveTime * (p.y - p0.y);
+        this.position.set(
+            this.maze.cellsize / 2 + p.x - this.moveCounter / this.moveTime * (p.x - p0.x),
+            this.maze.cellsize / 2 + p.y - this.moveCounter / this.moveTime * (p.y - p0.y));
 
         this.currentCell.position.x = p.x - this.position.x;
         this.currentCell.position.y = p.y - this.position.y;
@@ -138,23 +199,6 @@ class MazeCharacter extends PIXI.Container {
         if (direction === Directions.up) return [0, -1];
     }
 
-    static areHitRect(c1, c2) {
-        // Center-to-center distance.
-        let cx1 = c1.x + 0.5 * c1.width;
-        let cx2 = c2.x + 0.5 * c2.width;
-        let cy1 = c1.y + 0.5 * c1.height;
-        let cy2 = c2.y + 0.5 * c2.height;
-        let dx = Math.abs(cx2 - cx1);
-        let dy = Math.abs(cy2 - cy1);
-
-        let halfWidth = 0.5 * (c1.width + c2.width);
-        let halfHeight = 0.5 * (c1.height + c2.height);
-
-        if (dx < halfWidth && dy < halfHeight)
-            return true;
-        else
-            return false;
-    }
 }
 
 class EnemyCharacter extends MazeCharacter {
@@ -284,7 +328,32 @@ function initPlay() {
         mazeScene.addChild(player);
     }
 
+    // Place items in the maze.
     {
+        let word = 'あいうえお';
+        items = [];
+        for (let i = 0; i < word.length; i++) {
+            let item = new MazeObject(
+                maze,
+                {
+                    x: Math.floor(Math.random() * maze.nx),
+                    y: Math.floor(Math.random() * maze.ny)
+                },
+                new PIXI.Text(
+                    word[i],
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: '32px',
+                        fill: '#ffffff'
+                    }));
+            items.push(item);
+            mazeScene.addChild(item);
+        }
+
+        remainingItems = items.length;
+    }
+
+    if (numberOfEnemies > 0) {
         if (maze.nx < 10) throw 'No space to place enemies.';
         let directionTextures = new Array(4);
         directionTextures[Directions.down]
@@ -297,7 +366,7 @@ function initPlay() {
             = [PIXI.utils.TextureCache['kabocha_up_2.png']];
 
         enemies = [];
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < numberOfEnemies; i++) {
             let startCoords;
             do {
                 startCoords = {
@@ -317,11 +386,27 @@ function initPlay() {
 function play(delta) {
     player.move(delta, input.arrowX, input.arrowY);
 
+    items.forEach((item, index) => {
+        item.update(delta);
+        if (MazeObject.areHitRect(player, item)) {
+            if (item.disappearCounter == 0)
+                remainingItems--;
+            item.disappear();
+
+            if (items.length == 0)
+                player.invincible = true;
+        }
+    });
+
     let isHit = false;
     enemies.forEach(enemy => {
         enemy.moveEnemy(delta);
-        isHit |= MazeCharacter.areHitRect(player, enemy);
+        isHit |= MazeObject.areHitRect(player, enemy);
     });
+
+    if (remainingItems == 0 && player.moveCounter <= 0) {
+        initLevelClear();
+    }
 
     if (isHit) {
         player.sprite.stop();
@@ -329,15 +414,20 @@ function play(delta) {
     }
 }
 
+function initLevelClear() {
+    gameDoneScene.visible = true;
+    gameDoneScene.message.text = 'すてーじ くりあ\nもういちど あそぶには\nENTER キーを おして ください';
+    state = gameDone;
+}
+
 function initGameOver() {
     gameDoneScene.visible = true;
-
     gameDoneScene.message.text = 'げーむおーばー\nもういちど あそぶには\nENTER キーを おして ください';
-
     state = gameDone;
 }
 
 function gameDone(delta) {
     if (input.pressedZ || input.pressedX || input.pressedEnter)
         initPlay();
+    items.forEach(item => item.update(delta));
 }
