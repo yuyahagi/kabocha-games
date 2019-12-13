@@ -322,11 +322,16 @@ function initPlay() {
         ypos = i => Math.floor(Math.random() * maze.ny);
     }
     for (let i = 0; i < level.letters.length; i++) {
+        let x, y;
+        do {
+            x = xpos(i);
+            y = ypos(i);
+        } while (items.some(item => item.coords.x == x && item.coords.y == y));
         let item = new MazeObject(
             maze,
             {
-                x: xpos(i),
-                y: ypos(i)
+                x: x,
+                y: y
             },
             new PIXI.Text(
                 level.letters[i],
@@ -337,14 +342,14 @@ function initPlay() {
                 }));
         items.push(item);
         mazeScene.addChild(item);
-
-        letters = new Word(level.letters, 32, false);
-        letters.pivot.set(letters.width / 2, 0);
-        letters.position.set(
-            app.screen.width / 2,
-            app.screen.height - 48);
-        app.stage.addChild(letters);
     }
+
+    letters = new Word(level.letters, 32, false);
+    letters.pivot.set(letters.width / 2, 0);
+    letters.position.set(
+        app.screen.width / 2,
+        app.screen.height - 48);
+    app.stage.addChild(letters);
 
     enemies = [];
     if (level.enemies > 0) {
