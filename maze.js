@@ -1,5 +1,6 @@
 'use strict'
 
+const characterSpeed = 5;
 
 let app;
 let input;
@@ -10,6 +11,7 @@ let items;
 let letters;
 let currentLevel;
 let levels;
+let problemWords;
 let mazeScene;
 let gameDoneScene;
 
@@ -106,7 +108,7 @@ class MazeCharacter extends MazeObject {
         this.direction = Directions.down;
 
         // Iterations for a single move.
-        this.moveTime = 15;
+        this.moveTime = 60 / characterSpeed;
 
         // Counters for smoothly moving to the next position.
         this.moveCounter = 0;
@@ -246,6 +248,7 @@ function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });
     app.loader
         .add('levels', 'mazelevels.json')
+        .add('problemWords', 'words.json')
         .add([
             "images/majo.json",
             'images/kabocha.json',
@@ -258,6 +261,8 @@ function initScreen() {
 
 function setup(loader, resources) {
     levels = resources.levels.data.levels;
+    problemWords = resources.problemWords.data.words;
+
     currentLevel = 0;
 
     input = new PlayerInput();
@@ -309,19 +314,26 @@ function initPlay() {
 
     // Place items in the maze.
     items = [];
+    let problemWord;
     let xpos, ypos;
     if (level.tutorial) {
-        level.letters = "もじをあつめてね";
+        problemWord = "もじをあつめてね";
+        level.letters = problemWord.length;
         level.enemies = 0;
 
         xpos = i => 2 + i;
         ypos = i => 0;
     }
     else {
+        do {
+            let idx = Math.floor(Math.random() * problemWords.length);
+            problemWord = problemWords[idx];
+        } while (problemWord.length != level.letters);
+
         xpos = i => Math.floor(Math.random() * maze.nx);
         ypos = i => Math.floor(Math.random() * maze.ny);
     }
-    for (let i = 0; i < level.letters.length; i++) {
+    for (let i = 0; i < level.letters; i++) {
         let x, y;
         do {
             x = xpos(i);
@@ -334,7 +346,7 @@ function initPlay() {
                 y: y
             },
             new PIXI.Text(
-                level.letters[i],
+                problemWord[i],
                 {
                     fontFamily: 'Arial',
                     fontSize: '32px',
@@ -344,7 +356,7 @@ function initPlay() {
         mazeScene.addChild(item);
     }
 
-    letters = new Word(level.letters, 32, false);
+    letters = new Word(problemWord, 32, false);
     letters.pivot.set(letters.width / 2, 0);
     letters.position.set(
         app.screen.width / 2,
@@ -373,6 +385,7 @@ function initPlay() {
                 };
             } while (startCoords.x + startCoords.y < 10);
             let enemy = new EnemyCharacter(maze, startCoords, directionTextures);
+            enemy.moveTime /= level.speed;
             enemies.push(enemy);
             mazeScene.addChild(enemy);
         }
@@ -444,7 +457,7 @@ function initLevelClear() {
     }
     else {
         gameDoneScene.message.text = `すべての すてーじ くりあ`;
-        currentLevel = 1;
+        currentLevel = 0;
     }
 
     // Reset input to prevent immediately moving on.
