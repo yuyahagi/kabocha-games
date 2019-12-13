@@ -421,6 +421,9 @@ function initPlay() {
 }
 
 function play(delta) {
+    if (input.pressedEsc)
+        goToLauncher();
+
     player.move(delta, input.arrowX, input.arrowY);
 
     items.forEach((item, index) => {
@@ -483,6 +486,9 @@ function initGameOver() {
 }
 
 function gameDone(delta) {
+    if (input.pressedEsc)
+        goToLauncher();
+    
     if (input.pressedArrowX
         || input.pressedArrowY
         || input.pressedZ
@@ -490,4 +496,8 @@ function gameDone(delta) {
         || input.pressedEnter)
         initPlay();
     items.forEach(item => item.update(delta));
+}
+
+function goToLauncher() {
+    window.open('index.html', '_self');
 }

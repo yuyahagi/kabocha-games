@@ -4,6 +4,7 @@ let menu = {
     items: [
         { name: 'ひらがな', page: 'kana.html' },
         { name: 'かぼちゃ', page: 'pumpkins.html' },
+        { name: 'めいろ', page: 'maze.html' },
     ],
     selected: 0
 };
