@@ -307,67 +307,36 @@ function initPlay() {
         (app.screen.width - mazeScene.width) / 2,
         ((app.screen.height - 48) - mazeScene.height) / 2);
 
-    // Load animation frames for player sprite.
-    {
-        let directionTextures = new Array(4);
-    
-        directionTextures[Directions.down] = [];
-        for (let f = 0; f < 3; f++) {
-            let texture = PIXI.utils.TextureCache[`majo_down_${f + 1}.png`];
-            directionTextures[Directions.down].push(texture);
-        }
-        directionTextures[Directions.left] = [];
-        for (let f = 0; f < 3; f++) {
-            let texture = PIXI.utils.TextureCache[`majo_left_${f + 1}.png`];
-            directionTextures[Directions.left].push(texture);
-        }
-        directionTextures[Directions.right] = [];
-        for (let f = 0; f < 3; f++) {
-            let texture = PIXI.utils.TextureCache[`majo_right_${f + 1}.png`];
-            directionTextures[Directions.right].push(texture);
-        }
-        directionTextures[Directions.up] = [];
-        for (let f = 0; f < 3; f++) {
-            let texture = PIXI.utils.TextureCache[`majo_up_${f + 1}.png`];
-            directionTextures[Directions.up].push(texture);
-        }
-
-        player = new MazeCharacter(maze, { x: 0, y: 0 }, directionTextures);
-        mazeScene.addChild(player);
-    }
-
     // Place items in the maze.
-    {
-        items = [];
-        let xpos, ypos;
-        if (level.tutorial) {
-            level.letters = "もじをあつめてね";
-            level.enemies = 0;
+    items = [];
+    let xpos, ypos;
+    if (level.tutorial) {
+        level.letters = "もじをあつめてね";
+        level.enemies = 0;
 
-            xpos = i => 2 + i;
-            ypos = i => 0;
-        }
-        else {
-            xpos = i => Math.floor(Math.random() * maze.nx);
-            ypos = i => Math.floor(Math.random() * maze.ny);
-        }
-        for (let i = 0; i < level.letters.length; i++) {
-            let item = new MazeObject(
-                maze,
+        xpos = i => 2 + i;
+        ypos = i => 0;
+    }
+    else {
+        xpos = i => Math.floor(Math.random() * maze.nx);
+        ypos = i => Math.floor(Math.random() * maze.ny);
+    }
+    for (let i = 0; i < level.letters.length; i++) {
+        let item = new MazeObject(
+            maze,
+            {
+                x: xpos(i),
+                y: ypos(i)
+            },
+            new PIXI.Text(
+                level.letters[i],
                 {
-                    x: xpos(i),
-                    y: ypos(i)
-                },
-                new PIXI.Text(
-                    level.letters[i],
-                    {
-                        fontFamily: 'Arial',
-                        fontSize: '32px',
-                        fill: '#ffffff'
-                    }));
-            items.push(item);
-            mazeScene.addChild(item);
-        }
+                    fontFamily: 'Arial',
+                    fontSize: '32px',
+                    fill: '#ffffff'
+                }));
+        items.push(item);
+        mazeScene.addChild(item);
 
         letters = new Word(level.letters, 32, false);
         letters.pivot.set(letters.width / 2, 0);
@@ -403,6 +372,32 @@ function initPlay() {
             mazeScene.addChild(enemy);
         }
     }
+
+    // Load animation frames for player sprite.
+    let playerTextures = new Array(4);
+    playerTextures[Directions.down] = [];
+    for (let f = 0; f < 3; f++) {
+        let texture = PIXI.utils.TextureCache[`majo_down_${f + 1}.png`];
+        playerTextures[Directions.down].push(texture);
+    }
+    playerTextures[Directions.left] = [];
+    for (let f = 0; f < 3; f++) {
+        let texture = PIXI.utils.TextureCache[`majo_left_${f + 1}.png`];
+        playerTextures[Directions.left].push(texture);
+    }
+    playerTextures[Directions.right] = [];
+    for (let f = 0; f < 3; f++) {
+        let texture = PIXI.utils.TextureCache[`majo_right_${f + 1}.png`];
+        playerTextures[Directions.right].push(texture);
+    }
+    playerTextures[Directions.up] = [];
+    for (let f = 0; f < 3; f++) {
+        let texture = PIXI.utils.TextureCache[`majo_up_${f + 1}.png`];
+        playerTextures[Directions.up].push(texture);
+    }
+
+    player = new MazeCharacter(maze, { x: 0, y: 0 }, playerTextures);
+    mazeScene.addChild(player);
 
     state = play;
 }
