@@ -439,24 +439,42 @@ function play(delta) {
 function initLevelClear() {
     gameDoneScene.visible = true;
     if (currentLevel < levels.length - 1) {
-        gameDoneScene.message.text = `すてーじ ${currentLevel} くりあ\nENTER キーで つぎの レベル`;
+        gameDoneScene.message.text = `すてーじ ${currentLevel} くりあ`;
         ++currentLevel;
     }
     else {
-        gameDoneScene.message.text = `すべての すてーじ くりあ\nさいしょに もどるには\nENTER キーを おして ください`;
+        gameDoneScene.message.text = `すべての すてーじ くりあ`;
         currentLevel = 1;
     }
+
+    // Reset input to prevent immediately moving on.
+    input.pressedArrowX;
+    input.pressedArrowY;
+    input.pressedZ;
+    input.pressedX;
+    input.pressedEnter;
     state = gameDone;
 }
 
 function initGameOver() {
     gameDoneScene.visible = true;
-    gameDoneScene.message.text = `すてーじ ${currentLevel} げーむおーばー\nもういちど あそぶには\nENTER キーを おして ください`;
+    gameDoneScene.message.text = `すてーじ ${currentLevel} げーむおーばー`;
+
+    // Reset input to prevent immediately moving on.
+    input.pressedArrowX;
+    input.pressedArrowY;
+    input.pressedZ;
+    input.pressedX;
+    input.pressedEnter;
     state = gameDone;
 }
 
 function gameDone(delta) {
-    if (input.pressedZ || input.pressedX || input.pressedEnter)
+    if (input.pressedArrowX
+        || input.pressedArrowY
+        || input.pressedZ
+        || input.pressedX
+        || input.pressedEnter)
         initPlay();
     items.forEach(item => item.update(delta));
 }
