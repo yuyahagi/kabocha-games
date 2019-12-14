@@ -9,7 +9,8 @@ module.exports = {
         'maze': './src/maze.js'
     },
     output: {
-        path: __dirname + '/dist/app',
+        path: path.join(__dirname, '/dist/app'),
+        publicPath: '/app/',
         filename: '[name].bundle.js'
     },
     devServer: {
@@ -19,7 +20,7 @@ module.exports = {
         open: false
     },
     watchOptions: {
-        ignored: /node_modules/
+        ignored: '/node_modules/'
     },
     optimization: {
         splitChunks: {

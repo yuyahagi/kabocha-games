@@ -4,10 +4,8 @@ import * as PIXI from 'pixi.js';
 import { PlayerInput, TypingInput } from './keyboard';
 import { Letter, Word } from './word';
 import { Romaji } from './romaji';
-import { HpBar } from './hpbar';
 
 // Parameters that determine the game level.
-const timeLimit = 30;
 const numberOfProblems = 10;
 
 let app;
@@ -17,7 +15,6 @@ let typing;
 let state = play;
 let problemCount;
 let letters;
-let hpBar;
 let intermediary;
 let fallingLetters = [];
 let gameDoneMessage;
@@ -54,10 +51,6 @@ function setup(loader, resources) {
         app.screen.width / 2,
         app.screen.height / 2 + 80);
     app.stage.addChild(intermediary);
-
-    hpBar = new HpBar(1);
-    hpBar.visible = false;
-    app.stage.addChild(hpBar);
 
     gameDoneMessage = new PIXI.Text(
         '',
@@ -99,9 +92,6 @@ function initProblem() {
     app.stage.addChild(letters);
 
     intermediary.text = '';
-
-    hpBar.update(1);
-    hpBar.visible = true;
 
     if (typing) typing.unsubscribe();
     typing = new TypingInput();
@@ -192,13 +182,6 @@ function play(delta) {
     if (letters.allFilled) {
         state = loadNextProblem;
     }
-
-    // Reduce HP bar.
-    const hp = 1 - 0.001 / timeLimit * (app.ticker.lastTime - startTime)
-    hpBar.update(hp);
-
-    if (hp <= 0)
-        initGameOver();
 }
 
 function loadNextProblem(delta) {
