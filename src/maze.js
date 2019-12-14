@@ -1,5 +1,10 @@
 'use strict'
 
+import * as PIXI from 'pixi.js';
+import { PlayerInput } from './keyboard';
+import { Maze } from './mazegen';
+import { Word } from './word';
+
 const characterSpeed = 5;
 
 let app;
@@ -28,6 +33,8 @@ const Directions = {
         if (dir === Directions.up) return Directions.down;
     }
 };
+
+initScreen();
 
 class MazeObject extends PIXI.Container {
     constructor(maze, coords, sprite) {

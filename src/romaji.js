@@ -240,3 +240,5 @@ class Romaji {
         return chars.length > 1 && chars[0] == chars[1] && chars[0] !== 'N';
     }
 }
+
+export { Romaji };

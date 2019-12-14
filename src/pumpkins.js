@@ -1,5 +1,9 @@
 'use strict'
 
+import * as PIXI from 'pixi.js';
+import { PlayerInput } from './keyboard';
+import { HpBar } from './hpbar';
+
 let app;
 let playerSpeed = 5;
 let initialPumpkins = 1;
@@ -11,6 +15,15 @@ let CharacterImagePaths = {
     ghost: "images/obake.png",
     pumpkin: "images/kabocha.png"
 };
+
+let pumpkins;
+let player;
+let hpBar;
+let input;
+let startTime;
+let state = play;
+
+initScreen();
 
 class Character extends PIXI.Container {
     constructor(imgPath, x, y) {
@@ -45,13 +58,6 @@ class Character extends PIXI.Container {
             return false;
     }
 };
-
-let pumpkins;
-let player;
-let hpBar;
-let input;
-let startTime;
-let state = play;
 
 function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });

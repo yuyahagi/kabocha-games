@@ -1,5 +1,8 @@
 'use strict'
 
+import * as PIXI from 'pixi.js';
+import { PlayerInput } from './keyboard';
+
 let menu = {
     items: [
         { name: 'ひらがな', page: 'kana.html' },
@@ -12,6 +15,8 @@ let menu = {
 let app;
 let input;
 let state;
+
+initScreen();
 
 function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });

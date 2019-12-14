@@ -1,5 +1,7 @@
 'use strict'
 
+import * as PIXI from 'pixi.js';
+
 class Letter extends PIXI.Text {
     constructor(text, fill = '#404040', fontSize = 48) {
         super(
@@ -73,3 +75,5 @@ class Word extends PIXI.Container {
         return this.cursor >= this.children.length;
     }
 }
+
+export { Letter, Word };

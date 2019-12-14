@@ -1,5 +1,11 @@
 'use strict'
 
+import * as PIXI from 'pixi.js';
+import { PlayerInput, TypingInput } from './keyboard';
+import { Letter, Word } from './word';
+import { Romaji } from './romaji';
+import { HpBar } from './hpbar';
+
 // Parameters that determine the game level.
 const timeLimit = 30;
 const numberOfProblems = 10;
@@ -17,6 +23,8 @@ let fallingLetters = [];
 let gameDoneMessage;
 let romajiParser;
 let startTime;
+
+initScreen();
 
 function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });

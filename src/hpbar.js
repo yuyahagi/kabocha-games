@@ -1,3 +1,5 @@
+import * as PIXI from 'pixi.js';
+
 class HpBar extends PIXI.Container {
     constructor(maxHp) {
         super();
@@ -25,3 +27,5 @@ class HpBar extends PIXI.Container {
         this.front.width = this.barSizeX * hp / this.maxHp;
     }
 }
+
+export { HpBar };

@@ -173,3 +173,5 @@ class TypingInput {
         return inputs;
     }
 }
+
+export { PlayerInput, TypingInput };

@@ -1,5 +1,14 @@
 'use strinc'
 
+import * as PIXI from 'pixi.js';
+
+const Directions = {
+    down: 0,
+    left: 1,
+    right: 2,
+    up: 3,
+};
+
 class Maze {
     constructor(ny, nx) {
         // Size of maze.
@@ -217,3 +226,5 @@ function getStepsForRandomDirections(nx) {
     }
     return rs;
 }
+
+export { Maze };
