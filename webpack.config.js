@@ -6,7 +6,8 @@ module.exports = {
         'launcher': './src/launcher.js',
         'pumpkins': './src/pumpkins.js',
         'kana': './src/kana.js',
-        'maze': './src/maze.js'
+        'maze': './src/maze.js',
+        'liar': './src/liar.js'
     },
     output: {
         path: path.join(__dirname, '/dist/app'),
