@@ -126,7 +126,7 @@ function setup(loader, resources) {
     console.log(quiz.toTruthTablesString(true));
 
     let ghost = new Character('obake');
-    ghost.position.set(64, 8);
+    ghost.position.set(64, 32);
     app.stage.addChild(ghost);
     let instruction = new PIXI.Text(
         nliars === null
@@ -146,7 +146,7 @@ function setup(loader, resources) {
         let pumpkin = new Character('kabocha');
         pumpkin.position.set(
             64,
-            64 + 68 * i);
+            82 + 68 * i);
         enemies.push(pumpkin);
         app.stage.addChild(pumpkin);
         let statement = new PIXI.Text(
