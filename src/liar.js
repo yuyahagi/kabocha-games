@@ -13,6 +13,7 @@ let quiz;
 let state;
 let input;
 let player;
+let cursor;
 let enemies;
 
 initScreen();
@@ -66,6 +67,21 @@ class Character extends PIXI.Container {
         this.addChild(sprite);
         this.sprite = sprite;
 
+        // Recticle.
+        const recticle = new PIXI.Graphics();
+        this.addChild(recticle);
+        recticle.lineStyle(2, 0xffffff, 0.7);
+        const cx = this.sprite.width / 2;
+        const cy = this.sprite.height / 2;
+        for (let i = 0; i < 2; i++) {
+            const r = 12 + 10 * i
+            recticle.drawCircle(cx, cy, r);
+        }
+        recticle.moveTo(cx - 28, cy); recticle.lineTo(cx + 28, cy);
+        recticle.moveTo(cx, cy - 28); recticle.lineTo(cx, cy + 28);
+        recticle.visible = false;
+        this.recticle = recticle;
+
         this.directionTextures = directionTextures;
     }
 
@@ -92,6 +108,72 @@ class Character extends PIXI.Container {
         if (dy < 0) return Directions.up;
         if (dy > 0) return Directions.down;
         return this.direction;
+    }
+
+    get isTargeted() {
+        return this.recticle.visible;
+    }
+
+    toggleRecticle() {
+        this.recticle.visible = !this.recticle.visible;
+    }
+}
+
+class Cursor extends PIXI.Container {
+    constructor(x, y, w, h) {
+        super();
+
+        const g = new PIXI.Graphics();
+        this.sprite = g;
+        this.addChild(g);
+        this.update(x, y, w, h);
+
+        this.targetPos = { x: x, y: y, w: w, h: h };
+        this.lastPos = { x: x, y: y, w: w, h: h };
+        this.moveTime = 5;
+        this.moveCounter = 0;
+    }
+
+    update(x, y, w, h) {
+        this.sprite.clear();
+        this.sprite.lineStyle(2, 0xffffff);
+        this.sprite.drawRoundedRect(x, y, w, h, 6);
+
+    };
+
+    move(delta, x, y, w, h) {
+        if (this.moveCounter <= 0) {
+            if (x === this.targetPos.x
+                && y === this.targetPos.y
+                && w === this.targetPos.w
+                && h === this.targetPos.h)
+                return;
+
+            this.lastPos = this.targetPos;
+            this.targetPos = { x: x, y: y, w: w, h: h };
+            this.moveCounter = this.moveTime;
+        }
+        else {
+            this.moveCounter -= delta;
+            if (this.moveCounter < 0) this.moveCounter = 0;
+        }
+
+        const x1 = this.targetPos.x;
+        const y1 = this.targetPos.y;
+        const w1 = this.targetPos.w;
+        const h1 = this.targetPos.h;
+        const x0 = this.lastPos.x;
+        const y0 = this.lastPos.y;
+        const w0 = this.lastPos.w;
+        const h0 = this.lastPos.h;
+        if (x1 !== x0 || y1 !== y0 || w1 !== w0 || h1 !== h0) {
+            const ratio = this.moveCounter / this.moveTime;
+            this.update(
+                x1 - ratio * (x1 - x0),
+                y1 - ratio * (y1 - y0),
+                w1 - ratio * (w1 - w0),
+                h0 - ratio * (w1 - w0));
+        }
     }
 }
 
@@ -159,7 +241,6 @@ function setup(loader, resources) {
             });
         app.stage.addChild(statement);
         statement.position.set(pumpkin.x + 44, pumpkin.y + 4);
-
     }
 
     player = new Character('majo');
@@ -167,6 +248,13 @@ function setup(loader, resources) {
         app.screen.width / 2,
         app.screen.height - 64);
     app.stage.addChild(player);
+
+    cursor = new Cursor (
+        enemies[0].x - 5,
+        enemies[0].y - 5,
+        enemies[0].sprite.width + 10,
+        enemies[0].sprite.height + 10);
+    app.stage.addChild(cursor);
 
     state = play;
     app.ticker.add(gameLoop);
@@ -176,12 +264,25 @@ function gameLoop(delta) {
     state(delta);
 }
 
+let selected = 0;
 function play(delta) {
     if (input.pressedEsc)
         goToLauncher();
-    const dx = 10 * input.arrowX * delta;
-    const dy = 10 * input.arrowY * delta;
-    player.move(dx, dy);
+    if (input.pressedArrowY !== 0) {
+        selected += input.arrowY;
+        if (selected < 0) selected = 0;
+        if (selected >= enemies.length) selected = enemies.length - 1;
+    }
+    if (input.pressedEnter || input.pressedZ) {
+        enemies[selected].toggleRecticle();
+    }
+
+    cursor.move(
+        delta,
+        enemies[selected].x - 5,
+        enemies[selected].y - 5,
+        enemies[selected].sprite.width + 10,
+        enemies[selected].sprite.height + 10);
 }
 
 function goToLauncher() {
