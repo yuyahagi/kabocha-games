@@ -3,6 +3,7 @@
 const Ternary = require('../src/liargen').Ternary;
 const Operator = require('../src/liargen').Operator;
 const Proposition = require('../src/liargen').Proposition;
+const Statement = require('../src/liargen').Statement;
 const KnightsAndKnaves = require('../src/liargen').KnightsAndKnaves;
 
 describe('Proposition', () => {
@@ -134,6 +135,160 @@ describe('Proposition', () => {
     ].forEach(params => {
         it('can provide symbolic representation with NOT modifier', () => {
             expect(params.p.toSymbolicRepresentationString('p0', 'p1')).toBe(params.expected);
+        });
+    });
+});
+
+describe('Statement', () => {
+    [
+        { op: Operator.IDENT, lhs: 0, rhs: 1, expected: 'A は ほんとうの ことを いうよ' },
+        { op: Operator.NOT, lhs: 2, rhs: 3, expected: 'C は うそつきだよ' },
+        { op: Operator.OR, lhs: 4, rhs: 5, expected: 'E か F の どちらかは ほんとうの ことを いうよ\n(りょうほうかも)' },
+        { op: Operator.AND, lhs: 6, rhs: 7, expected: 'G も H も ほんとうの ことを いうよ' },
+        { op: Operator.EQUIVALENT, lhs: 8, rhs: 9, expected: 'I が ほんとうの ことを いうなら J も そうだよ\nI が うそつきなら J も そうだよ' },
+    ].forEach(params => {
+        it('can be converted non-nested proposition to natural language', () => {
+            const stmt = new Statement(new Proposition(params.op), params.lhs, params.rhs);
+            expect(stmt.toNaturalLanguage())
+                .toEqual(params.expected);
+        });
+    });
+
+    [
+        {
+            proposition: new Proposition(Operator.IDENT,
+                new Proposition(Operator.NOT),
+                null),
+            lhs: 0, rhs: 1,
+            expected: 'A は うそつきだよ'
+        },
+        {
+            proposition: new Proposition(Operator.NOT,
+                new Proposition(Operator.NOT),
+                null),
+            lhs: 0, rhs: 1,
+            expected: 'A は ほんとうの ことを いうよ'
+        },
+        // OR.
+        {
+            proposition: new Proposition(Operator.OR,
+                new Proposition(Operator.NOT),
+                new Proposition(Operator.IDENT)),
+            lhs: 0, rhs: 1,
+            expected: 'A が うそつきか B が ほんとうの ことを いうよ\n(りょうほうかも)'
+        },
+        {
+            proposition: new Proposition(Operator.OR,
+                null,
+                new Proposition(Operator.NOT)),
+            lhs: 0, rhs: 1,
+            expected: 'A が ほんとうの ことを いうか B が うそつきだよ\n(りょうほうかも)'
+        },
+        {
+            proposition: new Proposition(Operator.OR,
+                new Proposition(Operator.NOT),
+                new Proposition(Operator.NOT)),
+            lhs: 0, rhs: 1,
+            expected: 'A か B の どちらかは うそつきだよ\n(りょうほうかも)'
+        },
+        // AND.
+        {
+            proposition: new Proposition(Operator.AND,
+                new Proposition(Operator.NOT),
+                null),
+            lhs: 0, rhs: 1,
+            expected: 'A は うそつきだよ\nB は ほんとうの ことを いうよ'
+        },
+        {
+            proposition: new Proposition(Operator.AND,
+                new Proposition(Operator.IDENT),
+                new Proposition(Operator.NOT)),
+            lhs: 0, rhs: 1,
+            expected: 'A は ほんとうの ことを いうよ\nB が うそつきだよ'
+        },
+        {
+            proposition: new Proposition(Operator.AND,
+                new Proposition(Operator.NOT),
+                new Proposition(Operator.NOT)),
+            lhs: 0, rhs: 1,
+            expected: 'A と B が うそつきだよ'
+        },
+        // EQUIVALENT.
+        {
+            proposition: new Proposition(Operator.EQUIVALENT,
+                new Proposition(Operator.NOT),
+                null),
+            lhs: 0, rhs: 1,
+            expected: 'A が ほんとうの ことを いうなら B は ちがうよ\nA が うそつきなら B は ちがうよ'
+        },
+        {
+            proposition: new Proposition(Operator.EQUIVALENT,
+                new Proposition(Operator.IDENT),
+                new Proposition(Operator.NOT)),
+            lhs: 0, rhs: 1,
+            expected: 'A が ほんとうの ことを いうなら B は ちがうよ\nA が うそつきなら B は ちがうよ'
+        },
+        {
+            proposition: new Proposition(Operator.EQUIVALENT,
+                new Proposition(Operator.NOT),
+                new Proposition(Operator.NOT)),
+            lhs: 0, rhs: 1,
+            expected: 'A が ほんとうの ことを いうなら B も そうだよ\nA が うそつきなら B も そうだよ'
+        },
+    ].forEach(params => {
+        it('can be converted modified proposition to natural language', () => {
+            const stmt = new Statement(params.proposition, params.lhs, params.rhs);
+            expect(stmt.toNaturalLanguage())
+                .toEqual(params.expected);
+        });
+    });
+
+    [
+        {
+            proposition: new Proposition(Operator.NOT,
+                new Proposition(Operator.OR,
+                    new Proposition(Operator.NOT),
+                    new Proposition(Operator.NOT))),
+            lhs: 0, rhs: 1,
+            expected: 'A も B も ほんとうの ことを いうよ'
+        },
+        {
+            proposition: new Proposition(Operator.NOT,
+                new Proposition(Operator.AND,
+                    new Proposition(Operator.IDENT),
+                    new Proposition(Operator.NOT))),
+            lhs: 0, rhs: 1,
+            expected: 'A が うそつきか B が ほんとうの ことを いうよ\n(りょうほうかも)'
+        },
+        {
+            proposition: new Proposition(Operator.NOT,
+                new Proposition(Operator.OR,
+                    new Proposition(Operator.NOT),
+                    null)),
+            lhs: 0, rhs: 1,
+            expected: 'A は ほんとうの ことを いうよ\nB が うそつきだよ'
+        },
+        {
+            proposition: new Proposition(Operator.NOT,
+                new Proposition(Operator.EQUIVALENT,
+                    new Proposition(Operator.NOT),
+                    new Proposition(Operator.NOT))),
+            lhs: 0, rhs: 1,
+            expected: 'A が ほんとうの ことを いうなら B は ちがうよ\nA が うそつきなら B は ちがうよ'
+        },
+        {
+            proposition: new Proposition(Operator.NOT,
+                new Proposition(Operator.EQUIVALENT,
+                    new Proposition(Operator.NOT),
+                    null)),
+            lhs: 0, rhs: 1,
+            expected: 'A が ほんとうの ことを いうなら B も そうだよ\nA が うそつきなら B も そうだよ'
+        },
+    ].forEach(params => {
+        it('transform negated proposition with De Morgan\'s laws', () => {
+            const stmt = new Statement(params.proposition, params.lhs, params.rhs);
+            expect(stmt.toNaturalLanguage())
+                .toEqual(params.expected);
         });
     });
 });

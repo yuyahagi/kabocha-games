@@ -142,6 +142,115 @@ class Proposition {
                 throw `Unknown operator ${this.operator}.`;
         }
     }
+
+    toNaturalLanguage(lhs, rhs) {
+        const p = Proposition.transformNegationWithDeMorganLaws(this);
+        return p.toNaturalLanguageInternal(lhs, rhs);
+    }
+
+    static transformNegationWithDeMorganLaws(proposition) {
+        if (proposition.operator !== Operator.NOT || !proposition.lhs) return proposition;
+
+        const inner = proposition.lhs;
+
+        if (inner.operator === Operator.EQUIVALENT) {
+            const lhsOp = inner.lhs ? inner.lhs.operator : Operator.IDENT;
+            const rhsOp = inner.rhs ? inner.rhs.operator : Operator.IDENT;
+
+            if ((lhsOp === Operator.IDENT && rhsOp === Operator.IDENT)
+                || (lhsOp === Operator.NOT && rhsOp === Operator.NOT)) {
+                return new Proposition(
+                    inner.operator,
+                    new Proposition(Operator.NOT),
+                    null);
+            }
+            if ((lhsOp === Operator.IDENT && rhsOp === Operator.NOT)
+                || (lhsOp === Operator.NOT && rhsOp === Operator.IDENT)) {
+                return new Proposition(inner.operator);
+            }
+            throw `Unsupported combination of inner operators (${lhsOp}, ${rhsOp}).`;
+        }
+
+        if (inner.operator !== Operator.OR && inner.operator !== Operator.AND)
+            return proposition;
+        
+        const pident = new Proposition(Operator.IDENT);
+        const pnegate = new Proposition(Operator.NOT);
+        return new Proposition(
+            inner.operator === Operator.OR ? Operator.AND : Operator.OR,
+            (inner.lhs && inner.lhs.operator === Operator.NOT) ? pident : pnegate,
+            (inner.rhs && inner.rhs.operator === Operator.NOT) ? pident : pnegate);
+    }
+
+    toNaturalLanguageInternal(lhs, rhs) {
+        switch (this.operator) {
+            case Operator.IDENT:
+                if (this.lhs)
+                    return this.lhs.toNaturalLanguage(lhs, rhs);
+                else
+                    return `${lhs} は ほんとうの ことを いうよ`;
+            case Operator.NOT:
+                if (this.lhs)
+                    return `${lhs} は ほんとうの ことを いうよ`;
+                else
+                    return `${lhs} は うそつきだよ`;
+            case Operator.OR: {
+                const lhsOp = this.lhs ? this.lhs.operator : Operator.IDENT;
+                const rhsOp = this.rhs ? this.rhs.operator : Operator.IDENT;
+
+                if (lhsOp !== rhsOp) {
+                    if (lhsOp === Operator.NOT && rhsOp !== Operator.NOT)
+                        return `${lhs} が うそつきか ${rhs} が ほんとうの ことを いうよ\n(りょうほうかも)`;
+                    if (lhsOp !== Operator.NOT && rhsOp === Operator.NOT)
+                        return `${lhs} が ほんとうの ことを いうか ${rhs} が うそつきだよ\n(りょうほうかも)`;
+                    throw `Unsupported combination of operators (${lhsOp} and ${rhsOp}).`;
+                }
+                else {
+                    if (lhsOp === Operator.NOT && rhsOp === Operator.NOT)
+                        return `${lhs} か ${rhs} の どちらかは うそつきだよ\n(りょうほうかも)`;
+                    if (lhsOp !== Operator.NOT && rhsOp !== Operator.NOT)
+                        return `${lhs} か ${rhs} の どちらかは ほんとうの ことを いうよ\n(りょうほうかも)`;
+                }
+            }
+            case Operator.AND: {
+                const lhsOp = this.lhs ? this.lhs.operator : Operator.IDENT;
+                const rhsOp = this.rhs ? this.rhs.operator : Operator.IDENT;
+
+                if (lhsOp !== rhsOp) {
+                    if (lhsOp === Operator.NOT && rhsOp !== Operator.NOT)
+                        return `${lhs} は うそつきだよ\n${rhs} は ほんとうの ことを いうよ`;
+                    if (lhsOp !== Operator.NOT && rhsOp === Operator.NOT)
+                        return `${lhs} は ほんとうの ことを いうよ\n${rhs} が うそつきだよ`;
+                    throw `Unsupported combination of operators (${lhsOp} and ${rhsOp}).`;
+                }
+                else {
+                    if (lhsOp === Operator.NOT && rhsOp === Operator.NOT)
+                        return `${lhs} と ${rhs} が うそつきだよ`;
+                    if (lhsOp !== Operator.NOT && rhsOp !== Operator.NOT)
+                        return `${lhs} も ${rhs} も ほんとうの ことを いうよ`;
+                }
+            }
+            case Operator.EQUIVALENT: {
+                const lhsOp = this.lhs ? this.lhs.operator : Operator.IDENT;
+                const rhsOp = this.rhs ? this.rhs.operator : Operator.IDENT;
+
+                if (lhsOp !== rhsOp) {
+                    if ((lhsOp === Operator.NOT && rhsOp !== Operator.NOT)
+                        || (lhsOp !== Operator.NOT && rhsOp === Operator.NOT))
+                        return `${lhs} が ほんとうの ことを いうなら ${rhs} は ちがうよ\n${lhs} が うそつきなら ${rhs} は ちがうよ`;
+                    throw `Unsupported combination of operators (${lhsOp} and ${rhsOp}).`;
+                }
+                else {
+                    if ((lhsOp === Operator.NOT && rhsOp === Operator.NOT)
+                        || (lhsOp !== Operator.NOT && rhsOp !== Operator.NOT))
+                        return `${lhs} が ほんとうの ことを いうなら ${rhs} も そうだよ\n${lhs} が うそつきなら ${rhs} も そうだよ`;
+                    throw `Unsupported combination of operators (${lhsOp} and ${rhsOp}).`;
+                }
+            }
+            default:
+                throw `Unsupported operator ${this.proposition.op}`;
+        }
+    }
 }
 
 class Statement {
@@ -152,10 +261,22 @@ class Statement {
     }
 
     toSymbolicRepresentationString() {
-        console.log(this.lhsIndex);
         return this.proposition.toSymbolicRepresentationString(
             `p${this.lhsIndex}`,
             `p${this.rhsIndex}`);
+    }
+
+    toNaturalLanguage() {
+        const lhs = Statement.speakerIndexToLetter(this.lhsIndex);
+        const rhs = Statement.speakerIndexToLetter(this.rhsIndex);
+        return this.proposition.toNaturalLanguage(lhs, rhs);
+    }
+
+    static speakerIndexToLetter(speakerIndex) {
+        if (speakerIndex > 10)
+            throw `Speaker index of 10 or greater is not supported. Specified ${speakerIndex}.`;
+        
+        return 'ABCDEFGHIJKLMNOPQRS'[speakerIndex];
     }
 }
 
@@ -403,4 +524,4 @@ class KnightsAndKnaves {
     }
 }
 
-module.exports = { Ternary, Operator, Proposition, KnightsAndKnaves };
+module.exports = { Ternary, Operator, Proposition, Statement, KnightsAndKnaves };

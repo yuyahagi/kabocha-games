@@ -6,8 +6,9 @@ import { PlayerInput } from './keyboard';
 let menu = {
     items: [
         { name: 'ひらがな', page: 'kana.html' },
-        { name: 'かぼちゃ', page: 'pumpkins.html' },
+        { name: 'とぶ かぼちゃ', page: 'pumpkins.html' },
         { name: 'めいろ', page: 'maze.html' },
+        { name: 'うそつき かぼちゃ', page: 'liar.html' },
     ],
     selected: 0
 };
