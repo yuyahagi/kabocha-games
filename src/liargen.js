@@ -334,24 +334,26 @@ class KnightsAndKnaves {
     // 1s in all columns. All the other rows have at least one column where ri = 0.
     // This means, all but row 5 causes a contradiction. This is the solution.
 
-    constructor(n, answer) {
+    constructor(n, answer, nliars = null) {
         // Const members.
         this.n = n;
         this.answer = answer;
+        this.nknights = nliars ? n - nliars : null;
         const allBits = ~(0xffffffff << n);
         this.nrows = allBits + 1;
 
         // Members to be adjusted while generating the quiz.
         this.statements = new Array(this.n);
+        // Initialize statements with a tautology.
         for (let i = 0; i < this.n; i++) {
             this.statements[i] = new Statement(
-                new Proposition(Operator.IDENT), 0, 0);
+                new Proposition(Operator.IDENT), i, 0);
         }
         this.noncontradictoryTable = new Array(this.nrows);
         this.noncontradictoryTable.fill(allBits, 0, this.nrows);
     }
 
-    toTruthTablesString() {
+    toTruthTablesString(omitIrrelevantRows = false) {
         let header = ' ';
         let columnWidths = new Array(2 * this.n);
         for (let i = this.n - 1; i >= 0; i--) {
@@ -368,6 +370,9 @@ class KnightsAndKnaves {
         const separator = '-'.repeat(header.length + 1);
         let text = header + '\n' + separator;
         for (let row = 0; row < this.nrows; row++) {
+            if (omitIrrelevantRows && this.nknights && KnightsAndKnaves.countOnes(row) !== this.nknights)
+                continue;
+            
             let rowText = ' ';
             for (let col = this.n - 1; col >= 0; col--) {
                 rowText += ((1 << col) & row) >>> col;
@@ -395,12 +400,23 @@ class KnightsAndKnaves {
         for (iter = 0; iter < maxIterations && !this.isSolvable; iter++) {
 
             // Go over each column (speaker) and modify rows to make contradictions.
-            for (let c = 0; c < this.n && !this.isSolvable; c++) {
+            for (let c = 0; c < this.n; c++) {
+                if (iter > 0 && this.isSolvable)
+                    break;
+                
                 const col = columns[c];
                 const mask = 1 << col;
 
                 // Select a non-answer row that has yet to show any contradiction.
-                const row = this.obtainNoncontradictoryRow();
+                // If this returns null because there is no noncontradictory rows left,
+                // just select a random row so that the speaker says something.
+                let row = this.obtainNoncontradictoryRow();
+                if (row === null) {
+                    row = Math.floor(this.nrows * Math.random());
+                    // Make sure this does not contradict the answer.
+                    if (row === this.answer)
+                        row = (row + 1) % this.nrows;
+                }
 
                 // Select a pair of speakers that can set the selected cell
                 // and the answer cell to desired values.
@@ -454,11 +470,25 @@ class KnightsAndKnaves {
         //     console.log(`Iteration = ${iter}`);
     }
 
+    static countOnes(bits) {
+        // Count 1s in bit sequence from Hacker's Delight, 2nd ed. by Henry S.
+        // Warren, Jr, chapter 5.
+        bits = bits - ((bits >>> 1) & 0x55555555);
+        bits = (bits & 0x33333333) + ((bits >> 2) & 0x33333333);
+        bits = (bits + (bits >> 4)) & 0x0f0f0f0f;
+        bits = bits + (bits >> 8);
+        bits = bits + (bits >> 16);
+        return bits & 0x0000003f;
+    }
+
     get isSolvable() {
         const allBits = ~(0xffffffff << this.n);
+        const numOnes = this.n - this.nliars;
         let cnt = 0;
-        for (let i = 0; i < this.nrows; i++){
-            cnt += this.noncontradictoryTable[i] === allBits;
+        for (let row = 0; row < this.nrows; row++){
+            if (this.nknights && KnightsAndKnaves.countOnes(row) !== this.nknights)
+                continue;
+            cnt += this.noncontradictoryTable[row] === allBits;
             if (cnt > 1) return false;
         }
 
@@ -468,6 +498,8 @@ class KnightsAndKnaves {
     obtainNoncontradictoryRow() {
         const allBits = ~(0xffffffff << this.n);
         for (let row = 0; row < this.nrows; row++) {
+            if (this.nknights && KnightsAndKnaves.countOnes(row) !== this.nknights)
+                continue;
             if (row !== this.answer && this.noncontradictoryTable[row] === allBits)
                 return row;
         }
@@ -501,6 +533,9 @@ class KnightsAndKnaves {
             }
         }
 
+        console.log('======= obtainSpeakers failed =========');
+        requirements.forEach(req => { console.log(`req = ${req}`) });
+        console.log(`speaker array = ${speakers}`);
         throw 'Could not find appropriate pair of speakers.';
     }
 

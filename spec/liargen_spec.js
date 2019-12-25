@@ -328,7 +328,42 @@ describe('KnightsAndKnaves', () => {
 
         quiz.noncontradictoryTable = [0b101, 0b011, 0b001];
         expect(quiz.isSolvable).toBeFalse();
-    })
+    });
+
+    it('counts ones in bits', () => {
+        const k = KnightsAndKnaves;
+
+        expect(k.countOnes(1)).toBe(1);
+        expect(k.countOnes(2)).toBe(1);
+        expect(k.countOnes(3)).toBe(2);
+        expect(k.countOnes(4)).toBe(1);
+        expect(k.countOnes(5)).toBe(2);
+        expect(k.countOnes(6)).toBe(2);
+        expect(k.countOnes(7)).toBe(3);
+        expect(k.countOnes(127)).toBe(7);
+        expect(k.countOnes(255)).toBe(8);
+    });
+
+    it('is solvable when it has one and only one noncontradictory row within allowed combinations', () => {
+        let quiz = new KnightsAndKnaves(3, 0b010, 1);
+        quiz.noncontradictoryTable = [
+            /* row 000 */ 0b111,
+            /* row 001 */ 0b111,
+            /* row 010 */ 0b111,
+            /* row 011 */ 0b111,
+            /* row 100 */ 0b111,
+            /* row 101 */ 0b111,
+            /* row 110 */ 0b111,
+            /* row 111 */ 0b111,
+        ];
+        expect(quiz.isSolvable).toBeFalse();
+
+        quiz.noncontradictoryTable[6] = 0b101;
+        expect(quiz.isSolvable).toBeFalse();
+
+        quiz.noncontradictoryTable[3] = 0b001;
+        expect(quiz.isSolvable).toBeTrue();
+    });
 
     it('knows noncontradictory rows other than the answer', () => {
         let quiz = new KnightsAndKnaves(3, 0b010);
@@ -347,6 +382,30 @@ describe('KnightsAndKnaves', () => {
         quiz.answer = 0b101;
         quiz.noncontradictoryTable = [0, 1, 4, 3, 5, 7, 6, 7];
         expect(quiz.obtainNoncontradictoryRow()).toBe(7);
+
+    });
+
+    it('knows noncontradictory rows with specified number of liars other than the answer', () => {
+        let quiz = new KnightsAndKnaves(3, 0b010, 1);
+
+        // Relevant rows are
+        // row 3 (0b011), row 5 (0b101), and row 6 (0b110).
+
+        quiz.answer = 0b101;
+        quiz.noncontradictoryTable = [7, 7, 7, 7, 7, 7, 7, 7];
+        expect(quiz.obtainNoncontradictoryRow()).toBe(3);
+
+        quiz.answer = 0b011;
+        quiz.noncontradictoryTable = [7, 7, 7, 7, 7, 7, 7, 7];
+        expect(quiz.obtainNoncontradictoryRow()).toBe(5);
+
+        quiz.answer = 0b011;
+        quiz.noncontradictoryTable = [7, 7, 7, 7, 7, 6, 7, 7];
+        expect(quiz.obtainNoncontradictoryRow()).toBe(6);
+
+        quiz.answer = 0b101;
+        quiz.noncontradictoryTable = [0, 1, 4, 3, 5, 7, 6, 7];
+        expect(quiz.obtainNoncontradictoryRow()).toBe(null);
     });
 
     it('can select speaker pair', () => {
@@ -428,6 +487,39 @@ describe('KnightsAndKnaves', () => {
             const ans = Math.floor(Math.pow(2, n) * Math.random());
             // console.log(`i = ${i}, answer = ${ans}`);
             let quiz = new KnightsAndKnaves(n, ans);
+            quiz.generate();
+            expect(quiz.isSolvable).toBeTrue();
+
+            for (let col = 0; col < this.n; col++) {
+                const stmt = quiz.statements[col];
+                const lhsIndex = stmt.lhsIndex;
+                const rhsIndex = stmt.rhsIndex;
+                for (let row = 0; row < quiz.nrows; row++) {
+                    const lhs = ((1 << lhsIndex) & row) >>> lhsIndex;
+                    const rhs = ((1 << rhsIndex) & row) >>> rhsIndex;
+                    const p = 1 & row;
+                    const q = stmt.proposition.eval(lhs, rhs);
+                    const r = p ? q : 1 & !q;
+
+                    expect(r).toEqual(quiz.noncontradictoryTable[row] & 1);
+                }
+            }
+        }
+    });
+
+    it('generates quizes with specific number of liars', () => {
+        for (let i = 0; i < 1000; i++) {
+            const n = 3 + Math.floor(i % 8);
+            const nliars = Math.floor(n * Math.random());
+
+            // Construct the answer that has the correct number of liars.
+            const digits = (new KnightsAndKnaves(n)).getRandomOrder(n);
+            let ans = 0;
+            for (let i = 0; i < n - nliars; i++)
+                ans |= (1 << digits[i]);
+            
+            // console.log(`\ni = ${i}, answer = ${ans}, digits = ${digits}`);
+            let quiz = new KnightsAndKnaves(n, ans, nliars);
             quiz.generate();
             expect(quiz.isSolvable).toBeTrue();
 

@@ -5,6 +5,9 @@ import { PlayerInput } from './keyboard';
 const KnightsAndKnaves = require('./liargen').KnightsAndKnaves;
 const Statement = require('./liargen').Statement;
 
+const nspeakers = 3;
+const nliars = 1;
+
 let app;
 let quiz;
 let state;
@@ -110,15 +113,36 @@ function setup(loader, resources) {
     input = new PlayerInput();
     quiz = new KnightsAndKnaves(3, 0b101);
 
-    const n = 5;
-    const answer = Math.floor(Math.pow(2, n) * Math.random());
-    quiz = new KnightsAndKnaves(n, answer);
+    // Construct the answer that has the correct number of liars.
+    const digits = (new KnightsAndKnaves(nspeakers)).getRandomOrder(nspeakers);
+    let ans = 0;
+    for (let i = 0; i < nspeakers - nliars; i++)
+        ans |= (1 << digits[i]);
+    
+    quiz = new KnightsAndKnaves(nspeakers, ans, nliars);
     quiz.generate();
 
-    console.log(quiz.toTruthTablesString());
+    console.log(`Answer = ${ans}, generated from digits ${digits}`);
+    console.log(quiz.toTruthTablesString(true));
+
+    let ghost = new Character('obake');
+    ghost.position.set(64, 8);
+    app.stage.addChild(ghost);
+    let instruction = new PIXI.Text(
+        nliars === null
+            ? 'うそつき かぼちゃが なんこ いるか わからないよ'
+            : `うそつき かぼちゃが ${nliars} こ いるよ`,
+        {
+            fontFamily: 'Arial',
+            fontSize: '20px',
+            fill: '#ffffff',
+            align: 'left',
+        });
+    instruction.position.set(ghost.x + 44, ghost.y + 4);
+    app.stage.addChild(instruction);
 
     enemies = [];
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < nspeakers; i++) {
         let pumpkin = new Character('kabocha');
         pumpkin.position.set(
             64,
@@ -134,7 +158,7 @@ function setup(loader, resources) {
                 align: 'left',
             });
         app.stage.addChild(statement);
-        statement.position.set(108, 4 + 64 + 68 * i);
+        statement.position.set(pumpkin.x + 44, pumpkin.y + 4);
 
     }
 
