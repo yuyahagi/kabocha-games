@@ -5,7 +5,7 @@ import { PlayerInput } from './keyboard';
 const KnightsAndKnaves = require('./liargen').KnightsAndKnaves;
 const Statement = require('./liargen').Statement;
 
-const nspeakers = 3;
+const nspeakers = 5;
 const nliars = 1;
 
 let app;
@@ -13,8 +13,11 @@ let quiz;
 let state;
 let input;
 let player;
+let beams;
 let cursor;
-let enemies;
+let speakers;
+let selectables;
+let selected = 0;
 
 initScreen();
 
@@ -33,7 +36,7 @@ const Directions = {
 };
 
 class Character extends PIXI.Container {
-    constructor(textureNameBase) {
+    constructor(textureNameBase, isLiar = false) {
         super();
 
         let directionTextures = new Array(4);
@@ -66,6 +69,23 @@ class Character extends PIXI.Container {
         sprite.play();
         this.addChild(sprite);
         this.sprite = sprite;
+
+        // Labeling for a liar.
+        const liarLabel = new PIXI.Text(
+            'うそつき',
+            {
+                fontFamily: 'Arial',
+                fontSize: '12px',
+                fill: '#ffffff',
+                align: 'left',
+            });
+            liarLabel.position.set(
+                sprite.width / 2 - liarLabel.width / 2,
+                -18);
+        liarLabel.visible = false;
+        this.addChild(liarLabel);
+        this.isLiar = isLiar;
+        this.liarLabel = liarLabel;
 
         // Recticle.
         const recticle = new PIXI.Graphics();
@@ -117,6 +137,10 @@ class Character extends PIXI.Container {
     toggleRecticle() {
         this.recticle.visible = !this.recticle.visible;
     }
+
+    showLiarLabel() {
+        this.liarLabel.visible = this.isLiar;
+    }
 }
 
 class Cursor extends PIXI.Container {
@@ -140,6 +164,17 @@ class Cursor extends PIXI.Container {
         this.sprite.drawRoundedRect(x, y, w, h, 6);
 
     };
+
+    moveToObject(delta, obj) {
+        const w = obj.sprite ? obj.sprite.width : obj.width;
+        const h = obj.sprite ? obj.sprite.height : obj.height;
+        cursor.move(
+            delta,
+            obj.x - 5,
+            obj.y - 5,
+            w + 10,
+            h + 10);
+    }
 
     move(delta, x, y, w, h) {
         if (this.moveCounter <= 0) {
@@ -172,7 +207,64 @@ class Cursor extends PIXI.Container {
                 x1 - ratio * (x1 - x0),
                 y1 - ratio * (y1 - y0),
                 w1 - ratio * (w1 - w0),
-                h0 - ratio * (w1 - w0));
+                h1 - ratio * (h1 - h0));
+        }
+    }
+}
+
+class Beams extends PIXI.Container {
+    constructor(targetObjects) {
+        super();
+
+        this.beams = [];
+
+        // const target = targetObjects[i];
+        this.n = 0;
+        targetObjects.forEach(target => {
+            if (target.isTargeted) {
+                this.n++;
+                const beam = new PIXI.Graphics();
+
+                beam.x0 = player.x + player.width / 2;
+                beam.y0 = player.y + player.height / 2;
+                const pos = target.sprite.getGlobalPosition();
+                const x1 = pos.x + target.sprite.width / 2;
+                const y1 = pos.y + target.sprite.height / 2;
+                const lx = x1 - beam.x0;
+                const ly = y1 - beam.y0;
+                const scale = lx / ((0 - beam.x0) - lx);
+                beam.x1 = beam.x0 + scale * lx;
+                beam.y1 = beam.y0 + scale * ly;
+
+                this.beams.push(beam);
+                this.addChild(beam);
+            }
+        });
+
+        this.moveTime = 10;
+        this.currentBeamCounter = 0;
+        this.moveCounter = this.moveTime * this.n;
+
+    }
+
+    update(delta) {
+        this.moveCounter -= delta;
+        if (this.moveCounter < 0)
+            this.moveCounter = 0;
+
+        const current = Math.floor(this.moveCounter / this.moveTime);
+        const beamIdx = current === this.n ? 0 : this.n - current - 1;
+
+        const ratio = (this.moveCounter % this.moveTime) / this.moveTime;
+        for (let i = 0; i < beamIdx; i++)
+            this.beams[beamIdx - 1].clear();
+        
+        if (beamIdx < this.n) {
+            const beam = this.beams[beamIdx];
+            beam.clear();
+            beam.lineStyle(4, 0xffff00, ratio);
+            beam.moveTo(beam.x0, beam.y0);
+            beam.lineTo(beam.x1, beam.y1);
         }
     }
 }
@@ -210,7 +302,7 @@ function setup(loader, resources) {
     let ghost = new Character('obake');
     ghost.position.set(64, 32);
     app.stage.addChild(ghost);
-    let instruction = new PIXI.Text(
+    const instruction = new PIXI.Text(
         nliars === null
             ? 'うそつき かぼちゃが なんこ いるか わからないよ'
             : `うそつき かぼちゃが ${nliars} こ いるよ`,
@@ -223,15 +315,16 @@ function setup(loader, resources) {
     instruction.position.set(ghost.x + 44, ghost.y + 4);
     app.stage.addChild(instruction);
 
-    enemies = [];
+    speakers = [];
     for (let i = 0; i < nspeakers; i++) {
-        let pumpkin = new Character('kabocha');
+        const isLiar = ((1 << i) & quiz.answer) === 0;
+        const pumpkin = new Character('kabocha', isLiar);
         pumpkin.position.set(
             64,
             82 + 68 * i);
-        enemies.push(pumpkin);
+        speakers.push(pumpkin);
         app.stage.addChild(pumpkin);
-        let statement = new PIXI.Text(
+        const statement = new PIXI.Text(
             `${Statement.speakerIndexToLetter(i)} 「${quiz.statements[i].toNaturalLanguage()}」`,
             {
                 fontFamily: 'Arial',
@@ -243,20 +336,34 @@ function setup(loader, resources) {
         statement.position.set(pumpkin.x + 44, pumpkin.y + 4);
     }
 
-    player = new Character('majo');
-    player.position.set(
-        app.screen.width / 2,
-        app.screen.height - 64);
+    const fireButton = new PIXI.Text(
+        'ふぁいやー',
+        {
+            fontFamily: 'Arial',
+            fontSize: '20px',
+            fill: '#ffffff',
+            align: 'left',
+        });
+    fireButton.position.set(
+        app.screen.width - fireButton.width - 96,
+        app.screen.height - fireButton.height - 32);
+        app.stage.addChild(fireButton);
+        
+        player = new Character('majo');
     app.stage.addChild(player);
 
+    selectables = [];
+    speakers.forEach(s => selectables.push(s));
+    selectables.push(fireButton);
+
     cursor = new Cursor (
-        enemies[0].x - 5,
-        enemies[0].y - 5,
-        enemies[0].sprite.width + 10,
-        enemies[0].sprite.height + 10);
+        selectables[0].x - 5,
+        selectables[0].y - 5,
+        selectables[0].sprite.width + 10,
+        selectables[0].sprite.height + 10);
     app.stage.addChild(cursor);
 
-    state = play;
+    initPlay();
     app.ticker.add(gameLoop);
 }
 
@@ -264,25 +371,58 @@ function gameLoop(delta) {
     state(delta);
 }
 
-let selected = 0;
+function initPlay() {
+    player.position.set(
+        app.screen.width / 2,
+        app.screen.height - 64);
+
+    state = play;
+}
+
 function play(delta) {
     if (input.pressedEsc)
         goToLauncher();
-    if (input.pressedArrowY !== 0) {
-        selected += input.arrowY;
-        if (selected < 0) selected = 0;
-        if (selected >= enemies.length) selected = enemies.length - 1;
-    }
+    
+    selected = (selected + input.pressedArrowY + selectables.length) % selectables.length;
+    const pressedArrowX = input.pressedArrowX;
+    if (selected === selectables.length - 1 && pressedArrowX < 0)
+        selected = selectables.length - 2;
+    else if (pressedArrowX > 0)
+        selected = selectables.length - 1;
+    
     if (input.pressedEnter || input.pressedZ) {
-        enemies[selected].toggleRecticle();
+        if (selected < speakers.length)
+            speakers[selected].toggleRecticle();
+        else {
+            initCheckingAnswer();
+        }
     }
+    
+    cursor.moveToObject(delta, selectables[selected]);
+}
 
-    cursor.move(
-        delta,
-        enemies[selected].x - 5,
-        enemies[selected].y - 5,
-        enemies[selected].sprite.width + 10,
-        enemies[selected].sprite.height + 10);
+function initCheckingAnswer() {
+    beams = new Beams(selectables.slice(0, quiz.n));
+    app.stage.addChild(beams);
+    state = checkingAnswer;
+}
+
+function checkingAnswer(delta) {
+    beams.update(delta);
+    if (beams.moveCounter <= 0) {
+        // for (let i = 0; i < quiz.n; i++) {
+        //     const speaker = selectables[i];
+        speakers.forEach(speaker => {
+            speaker.showLiarLabel();
+        });
+
+        if (input.pressedZ || input.pressedEnter) {
+            app.stage.removeChild(beams);
+            beams = null;
+
+            state = play;
+        }
+    }
 }
 
 function goToLauncher() {
