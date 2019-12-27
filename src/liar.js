@@ -36,7 +36,7 @@ const Directions = {
 };
 
 class Character extends PIXI.Container {
-    constructor(textureNameBase, isLiar = false) {
+    constructor(textureNameBase) {
         super();
 
         let directionTextures = new Array(4);
@@ -65,44 +65,18 @@ class Character extends PIXI.Container {
 
         // Character sprite.
         let sprite = new PIXI.AnimatedSprite(directionTextures[this.direction]);
+        sprite.pivot.set(
+            sprite.width / 2,
+            sprite.height / 2);
         sprite.animationSpeed = 0.1;
         sprite.play();
         this.addChild(sprite);
         this.sprite = sprite;
 
-        // Labeling for a liar.
-        const liarLabel = new PIXI.Text(
-            'うそつき',
-            {
-                fontFamily: 'Arial',
-                fontSize: '12px',
-                fill: '#ffffff',
-                align: 'left',
-            });
-            liarLabel.position.set(
-                sprite.width / 2 - liarLabel.width / 2,
-                -18);
-        liarLabel.visible = false;
-        this.addChild(liarLabel);
-        this.isLiar = isLiar;
-        this.liarLabel = liarLabel;
-
-        // Recticle.
-        const recticle = new PIXI.Graphics();
-        this.addChild(recticle);
-        recticle.lineStyle(2, 0xffffff, 0.7);
-        const cx = this.sprite.width / 2;
-        const cy = this.sprite.height / 2;
-        for (let i = 0; i < 2; i++) {
-            const r = 12 + 10 * i
-            recticle.drawCircle(cx, cy, r);
-        }
-        recticle.moveTo(cx - 28, cy); recticle.lineTo(cx + 28, cy);
-        recticle.moveTo(cx, cy - 28); recticle.lineTo(cx, cy + 28);
-        recticle.visible = false;
-        this.recticle = recticle;
-
         this.directionTextures = directionTextures;
+
+        this.damageCounter = 0;
+        this.damageTime = 10;
     }
 
     move(dx, dy) {
@@ -111,6 +85,33 @@ class Character extends PIXI.Container {
 
         this.x += dx;
         this.y += dy;
+    }
+
+    setDirection(direction) {
+        this.direction = direction;
+        this.sprite.textures = this.directionTextures[direction];
+    }
+
+    damage() {
+        this.sprite.visible = false;
+        this.damageCounter = this.damageTime;
+    }
+
+    damageMotion() {
+        // Default empty damage motion.
+    }
+
+    update(delta) {
+        if (this.damageCounter <= 0) {
+            // Nothing to do.
+            return;
+        }
+        else {
+            this.damageCounter -= delta;
+            if (this.damageCounter < 0) this.damageCounter = 0;
+
+            this.damageMotion(delta);
+        }
     }
 
     setDirection(direction) {
@@ -128,6 +129,57 @@ class Character extends PIXI.Container {
         if (dy < 0) return Directions.up;
         if (dy > 0) return Directions.down;
         return this.direction;
+    }
+}
+
+class SpeakerCharacter extends Character {
+    constructor(textureNameBase, statement, isLiar) {
+        super(textureNameBase, isLiar);
+
+        const statementSprite = new PIXI.Text(
+            statement,
+            {
+                fontFamily: 'Arial',
+                fontSize: '20px',
+                fill: '#ffffff',
+                align: 'left',
+            });
+        this.addChild(statementSprite);
+        statementSprite.position.set(
+            this.sprite.x - this.sprite.width / 2 + 44,
+            this.sprite.y - this.sprite.height / 2+ 4);
+
+        // Labeling for a liar.
+        const liarLabel = new PIXI.Text(
+            'うそつき',
+            {
+                fontFamily: 'Arial',
+                fontSize: '12px',
+                fill: '#ffffff',
+                align: 'left',
+            });
+        liarLabel.position.set(
+            -liarLabel.width / 2,
+            -this.sprite.pivot.y - 18);
+        liarLabel.visible = false;
+        this.addChild(liarLabel);
+        this.isLiar = isLiar;
+        this.liarLabel = liarLabel;
+
+        // Recticle.
+        const recticle = new PIXI.Graphics();
+        this.addChild(recticle);
+        recticle.lineStyle(2, 0xffffff, 0.7);
+        const cx = 0;
+        const cy = 0;
+        for (let i = 0; i < 2; i++) {
+            const r = 12 + 10 * i
+            recticle.drawCircle(cx, cy, r);
+        }
+        recticle.moveTo(cx - 28, cy); recticle.lineTo(cx + 28, cy);
+        recticle.moveTo(cx, cy - 28); recticle.lineTo(cx, cy + 28);
+        recticle.visible = false;
+        this.recticle = recticle;
     }
 
     get isTargeted() {
@@ -166,12 +218,14 @@ class Cursor extends PIXI.Container {
     };
 
     moveToObject(delta, obj) {
-        const w = obj.sprite ? obj.sprite.width : obj.width;
-        const h = obj.sprite ? obj.sprite.height : obj.height;
+        const gpos = obj.getGlobalPosition();
+        const pivot = obj.pivot;
+        const w = obj.width;
+        const h = obj.height;
         cursor.move(
             delta,
-            obj.x - 5,
-            obj.y - 5,
+            gpos.x - pivot.x - 5,
+            gpos.y - pivot.y - 5,
             w + 10,
             h + 10);
     }
@@ -213,38 +267,58 @@ class Cursor extends PIXI.Container {
 }
 
 class Beams extends PIXI.Container {
-    constructor(targetObjects) {
+    constructor() {
         super();
 
-        this.beams = [];
-
-        // const target = targetObjects[i];
         this.n = 0;
-        targetObjects.forEach(target => {
-            if (target.isTargeted) {
-                this.n++;
-                const beam = new PIXI.Graphics();
+        this.beams = [];
+        this.targets = [];
+        this.explosions = [];
 
-                beam.x0 = player.x + player.width / 2;
-                beam.y0 = player.y + player.height / 2;
-                const pos = target.sprite.getGlobalPosition();
-                const x1 = pos.x + target.sprite.width / 2;
-                const y1 = pos.y + target.sprite.height / 2;
-                const lx = x1 - beam.x0;
-                const ly = y1 - beam.y0;
-                const scale = lx / ((0 - beam.x0) - lx);
-                beam.x1 = beam.x0 + scale * lx;
-                beam.y1 = beam.y0 + scale * ly;
+        this.moveTime = 20;
+        this.moveCounter = 0;
 
-                this.beams.push(beam);
-                this.addChild(beam);
-            }
-        });
+        // Cache explosion sprite.
+        this.explosionTextures = createExplosionTextures();
+    }
 
-        this.moveTime = 10;
-        this.currentBeamCounter = 0;
+    addBeam(sourceCharacter, targetCharacter) {
+        const beam = new PIXI.Graphics();
+        
+        const pos0 = sourceCharacter.sprite.getGlobalPosition();
+        const pos1 = targetCharacter.sprite.getGlobalPosition();
+        beam.x0 = pos0.x;
+        beam.y0 = pos0.y;
+        const x1 = pos1.x;
+        const y1 = pos1.y;
+
+        // Make the beam penetrate the target.
+        let x2;
+        if (x1 - beam.x0 > 0) x2 = app.screen.width;
+        else if (x1 - beam.x0 < 0) x2 = 0;
+        else x2 = x1;
+
+        const lx = x1 - beam.x0;
+        const ly = y1 - beam.y0;
+        const scale = (x2 - beam.x0) / lx;
+        beam.x1 = beam.x0 + scale * lx;
+        beam.y1 = beam.y0 + scale * ly;
+        
+        this.n++;
+        this.beams.push(beam);
+        this.targets.push(targetCharacter);
+        this.addChild(beam);
+
+        // Prepare explosion sprites.
+        const explosion = createExplosion(this.explosionTextures);
+        explosion.position = pos1;
+        this.addChild(explosion);
+        this.explosions.push(explosion);
+    }
+
+    startBeams() {
         this.moveCounter = this.moveTime * this.n;
-
+        this.currentBeamIndex = -1;
     }
 
     update(delta) {
@@ -259,14 +333,68 @@ class Beams extends PIXI.Container {
         for (let i = 0; i < beamIdx; i++)
             this.beams[beamIdx - 1].clear();
         
-        if (beamIdx < this.n) {
-            const beam = this.beams[beamIdx];
-            beam.clear();
-            beam.lineStyle(4, 0xffff00, ratio);
-            beam.moveTo(beam.x0, beam.y0);
-            beam.lineTo(beam.x1, beam.y1);
+        if (beamIdx !== this.currentBeamIndex) {
+            for (let idx = this.currentBeamIndex + 1; idx <= beamIdx; idx++) {
+                this.targets[idx].damage();
+                this.explosions[idx].play();
+            }
+            this.currentBeamIndex = beamIdx;
         }
+        
+        const beam = this.beams[beamIdx];
+        beam.clear();
+        beam.lineStyle(4, 0xffff00, ratio);
+        beam.moveTo(beam.x0, beam.y0);
+        beam.lineTo(beam.x1, beam.y1);
     }
+}
+
+function createExplosionTextures() {
+    const n = 12;
+    const rmax = 20;
+    const r1delay = 0.3;
+    let textures = new Array(n);
+    for (let i = 0; i < n; i++) {
+        const t = i / (n - 1);
+        const r2 = rmax * (1 - Math.exp(-t / 0.05));
+        const r1 = t < r1delay
+            ? 0
+            : rmax * (1 - Math.exp(-(t - r1delay) / 0.1));
+        const color = hot(1 - t * t);
+        let g = new PIXI.Graphics();
+        g.beginFill(color, 1);
+        g.drawCircle(0, 0, r2);
+        g.endFill();
+        if (r1 > 0) {
+            g.beginHole();
+            g.drawCircle(0, 0, r1);
+            g.endHole();
+        }
+
+        textures[i] = app.renderer.generateTexture(g);
+    }
+
+    return textures;
+}
+
+function createExplosion(textures) {
+    let explosionSprite = new PIXI.AnimatedSprite(textures);
+    explosionSprite.anchor.set(0.5);
+    explosionSprite.animationSpeed = 0.25;
+    explosionSprite.loop = false;
+
+    return explosionSprite;
+}
+
+function hot(n) {
+    const r = n < 0.37 ? n / 0.37 : 1;
+    const g = (n >= 0.37 && n < 0.75) ? (n - 0.37) / 0.38
+        : (n < 0.37 ? 0 : 1);
+    const b = n >= 0.75 ? (n - 0.75) / 0.25 : 0;
+    const R = Math.floor(255 * r);
+    const G = Math.floor(255 * g);
+    const B = Math.floor(255 * b);
+    return (R << 16) | (G << 8) | B;
 }
 
 function initScreen() {
@@ -299,41 +427,26 @@ function setup(loader, resources) {
     console.log(`Answer = ${ans}, generated from digits ${digits}`);
     console.log(quiz.toTruthTablesString(true));
 
-    let ghost = new Character('obake');
-    ghost.position.set(64, 32);
-    app.stage.addChild(ghost);
-    const instruction = new PIXI.Text(
+    const instruction = new SpeakerCharacter(
+        'obake',
         nliars === null
             ? 'うそつき かぼちゃが なんこ いるか わからないよ'
-            : `うそつき かぼちゃが ${nliars} こ いるよ`,
-        {
-            fontFamily: 'Arial',
-            fontSize: '20px',
-            fill: '#ffffff',
-            align: 'left',
-        });
-    instruction.position.set(ghost.x + 44, ghost.y + 4);
+            : `うそつき かぼちゃが ${nliars} こ いるよ`);
+    instruction.position.set(80, 48);
     app.stage.addChild(instruction);
 
     speakers = [];
     for (let i = 0; i < nspeakers; i++) {
         const isLiar = ((1 << i) & quiz.answer) === 0;
-        const pumpkin = new Character('kabocha', isLiar);
+        const pumpkin = new SpeakerCharacter(
+            'kabocha',
+            `${Statement.speakerIndexToLetter(i)} 「${quiz.statements[i].toNaturalLanguage()}」`,
+            isLiar);
         pumpkin.position.set(
-            64,
-            82 + 68 * i);
+            80,
+            98 + 68 * i);
         speakers.push(pumpkin);
         app.stage.addChild(pumpkin);
-        const statement = new PIXI.Text(
-            `${Statement.speakerIndexToLetter(i)} 「${quiz.statements[i].toNaturalLanguage()}」`,
-            {
-                fontFamily: 'Arial',
-                fontSize: '20px',
-                fill: '#ffffff',
-                align: 'left',
-            });
-        app.stage.addChild(statement);
-        statement.position.set(pumpkin.x + 44, pumpkin.y + 4);
     }
 
     const fireButton = new PIXI.Text(
@@ -345,22 +458,39 @@ function setup(loader, resources) {
             align: 'left',
         });
     fireButton.position.set(
-        app.screen.width - fireButton.width - 96,
-        app.screen.height - fireButton.height - 32);
+        448,
+        416 + 4);
         app.stage.addChild(fireButton);
         
-        player = new Character('majo');
+    player = new Character('majo');
     app.stage.addChild(player);
 
+    // Custom damage motion for the player.
+    player.damageTime = 30;
+    player.damage = () => {
+        player.damageCounter = player.damageTime;
+        player.vx = 10;
+        player.y0 = player.y;
+    };
+    player.damageMotion = delta => {
+        const t = (player.damageTime - player.damageCounter) / player.damageTime;
+        const jumpHeight = 50;
+        const y = jumpHeight * (1 - 4 * (t - 0.5) * (t - 0.5))
+
+        player.x += player.vx * delta;
+        player.y = player.y0 - y;
+        player.rotation += 0.3 * delta;
+    };
+
     selectables = [];
-    speakers.forEach(s => selectables.push(s));
+    speakers.forEach(s => selectables.push(s.sprite));
     selectables.push(fireButton);
 
     cursor = new Cursor (
         selectables[0].x - 5,
         selectables[0].y - 5,
-        selectables[0].sprite.width + 10,
-        selectables[0].sprite.height + 10);
+        selectables[0].width + 10,
+        selectables[0].height + 10);
     app.stage.addChild(cursor);
 
     initPlay();
@@ -373,10 +503,13 @@ function gameLoop(delta) {
 
 function initPlay() {
     player.position.set(
-        app.screen.width / 2,
-        app.screen.height - 64);
-
-    state = play;
+        416,
+        432);
+    player.setDirection(Directions.left);
+    player.vx = 0;
+    player.rotation = 0;
+    
+        state = play;
 }
 
 function play(delta) {
@@ -402,16 +535,32 @@ function play(delta) {
 }
 
 function initCheckingAnswer() {
-    beams = new Beams(selectables.slice(0, quiz.n));
+    beams = new Beams();
     app.stage.addChild(beams);
+
+    speakers.forEach(speaker => {
+        if (speaker.isTargeted)
+            beams.addBeam(player, speaker);
+    });
+
+    // If liars remain untargeted, have them fire back.
+    for (let i = 0; i < quiz.n; i++) {
+        const speaker = speakers[i];
+        const isLiar = ((1 << i) & quiz.answer) === 0;
+        if (!speaker.isTargeted && isLiar)
+            beams.addBeam(speaker, player);
+    }
+
+    beams.startBeams();
     state = checkingAnswer;
 }
 
 function checkingAnswer(delta) {
     beams.update(delta);
+    player.update(delta);
+    speakers.forEach(s => { s.update(delta); });
+
     if (beams.moveCounter <= 0) {
-        // for (let i = 0; i < quiz.n; i++) {
-        //     const speaker = selectables[i];
         speakers.forEach(speaker => {
             speaker.showLiarLabel();
         });
@@ -420,7 +569,7 @@ function checkingAnswer(delta) {
             app.stage.removeChild(beams);
             beams = null;
 
-            state = play;
+            initPlay();
         }
     }
 }
