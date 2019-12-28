@@ -5,8 +5,12 @@ import { PlayerInput } from './keyboard';
 const KnightsAndKnaves = require('./liargen').KnightsAndKnaves;
 const Statement = require('./liargen').Statement;
 
-const nspeakers = 3;
-const nliars = 1;
+const levels = [
+    { name: 'れんしゅう', nspeakers: 2, nliars: 1 },
+    { name: 'ほんばん', nspeakers: 3, nliars: 1 },
+    { name: 'マスター', nspeakers: 4, nliars: 2 },
+    { name: 'げきむず', nspeakers: 5, nliars: null },
+]
 
 let app;
 let quiz;
@@ -18,6 +22,9 @@ let cursor;
 let speakers;
 let selectables;
 let selected = 0;
+
+let levelSelectionScene;
+let gameScene;
 
 let instruction;
 let fireButton;
@@ -455,9 +462,48 @@ function initScreen() {
 function setup(loader, resources) {
     input = new PlayerInput();
 
+    // ========================================================================
+    // Common instruction to be used across all scenes.
+    // ========================================================================
     instruction = new SpeakerCharacter('obake', '');
     instruction.position.set(80, 48);
     app.stage.addChild(instruction);
+
+    // ========================================================================
+    // Level selection scene.
+    // ========================================================================
+    levelSelectionScene = new PIXI.Container();
+    app.stage.addChild(levelSelectionScene);
+
+    const g = new PIXI.Graphics();
+    g.beginFill(0xffffff, 0.25);
+    g.drawRect(210, 100, 220, 280);
+    g.endFill();
+    levelSelectionScene.addChild(g);
+
+    levelSelectionScene.selectables = [];
+    levels.forEach((level, index) => {
+        const t = new PIXI.Text(
+            level.name,
+            {
+                fontFamily: 'Arial',
+                fontSize: '32px',
+                fill: '#ffffff',
+                align: 'center',
+            });
+        t.position.set(
+            app.screen.width / 2 - t.width / 2,
+            120 + 8 + 64 * index);
+        levelSelectionScene.addChild(t);
+        levelSelectionScene.selectables.push(t);
+    });
+    levelSelectionScene.selected = 0;
+
+    // ========================================================================
+    // Game play scene.
+    // ========================================================================
+    gameScene = new PIXI.Container();
+    app.stage.addChild(gameScene);
 
     fireButton = new PIXI.Text(
         '',
@@ -470,10 +516,10 @@ function setup(loader, resources) {
     fireButton.position.set(
         448,
         416 + 4);
-        app.stage.addChild(fireButton);
+    gameScene.addChild(fireButton);
         
     player = new Character('majo');
-    app.stage.addChild(player);
+    gameScene.addChild(player);
 
     // Custom damage motion for the player.
     player.damageTime = 50;
@@ -494,10 +540,13 @@ function setup(loader, resources) {
 
     speakers = [];
 
+    // ========================================================================
+    // Cursor will be used across all scenes.
+    // ========================================================================
     cursor = new Cursor(0, 0, 10, 10);
     app.stage.addChild(cursor);
 
-    initPlay();
+    initSelectLevel();
     app.ticker.add(gameLoop);
 }
 
@@ -505,7 +554,39 @@ function gameLoop(delta) {
     state(delta);
 }
 
+function initSelectLevel() {
+    levelSelectionScene.visible = true;
+    gameScene.visible = false;
+
+    instruction.statementSprite.text = 'レベルを えらんでね';
+
+    state = selectLevel;
+}
+
+function selectLevel(delta) {
+    if (input.pressedEsc)
+        goToLauncher();
+    
+    levelSelectionScene.selected
+        = (levelSelectionScene.selected + input.pressedArrowY + levelSelectionScene.selectables.length)
+        % levelSelectionScene.selectables.length;
+    cursor.moveToObject(
+        delta,
+        levelSelectionScene.selectables[levelSelectionScene.selected]);
+    
+    if (input.pressedEnter || input.pressedZ) {
+        levelSelectionScene.visible = false;
+        initPlay();
+    }
+}
+
 function initPlay() {
+    gameScene.visible = true;
+
+    const level = levelSelectionScene.selected;
+    const nspeakers = levels[level].nspeakers;
+    const nliars = levels[level].nliars;
+    
     player.position.set(
         416,
         432);
@@ -522,7 +603,8 @@ function initPlay() {
     let ans = 0;
     if (nliars === null) {
         // Number of liars not specified. Randomize.
-        ans = Math.floor(nspeakers * Math.random());
+        const nrows = Math.pow(2, nspeakers);
+        ans = Math.floor(nrows * Math.random());
     }
     else {
         // Construct the answer that has the correct number of liars.
@@ -537,7 +619,7 @@ function initPlay() {
     console.log(`Answer = ${ans}`);
     console.log(quiz.toTruthTablesString(true));
 
-    speakers.forEach(s => app.stage.removeChild(s));
+    speakers.forEach(s => gameScene.removeChild(s));
     speakers = [];
     for (let i = 0; i < nspeakers; i++) {
         const isLiar = ((1 << i) & quiz.answer) === 0;
@@ -545,7 +627,7 @@ function initPlay() {
             'kabocha',
             `${Statement.speakerIndexToLetter(i)} 「${quiz.statements[i].toNaturalLanguage()}」`,
             isLiar);
-        app.stage.addChild(pumpkin);
+        gameScene.addChild(pumpkin);
         pumpkin.position.set(
             80,
             98 + 68 * i);
@@ -633,14 +715,18 @@ function checkingAnswer(delta) {
         // Remove beams.
         app.stage.removeChild(beams);
         beams = null;
+
         state = gameDone;
     }
 }
 
 function gameDone(delta) {
+    if (input.pressedEsc)
+        goToLauncher();
+    
     cursor.moveToObject(delta, fireButton);
     if (input.pressedZ || input.pressedEnter)
-        initPlay();
+        initSelectLevel();
 }
 
 function goToLauncher() {
