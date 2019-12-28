@@ -96,8 +96,7 @@ class Character extends PIXI.Container {
     }
 
     damage() {
-        this.sprite.visible = false;
-        this.damageCounter = this.damageTime;
+        // Default empty damage motion.
     }
 
     damageMotion() {
@@ -274,6 +273,7 @@ class Beams extends PIXI.Container {
 
         this.n = 0;
         this.beams = [];
+        this.sources = [];
         this.targets = [];
         this.explosions = [];
 
@@ -285,37 +285,58 @@ class Beams extends PIXI.Container {
     }
 
     addBeam(sourceCharacter, targetCharacter) {
+        this.sources.push(sourceCharacter);
+        this.targets.push(targetCharacter);
+
         const beam = new PIXI.Graphics();
         
-        const pos0 = sourceCharacter.sprite.getGlobalPosition();
-        const pos1 = targetCharacter.sprite.getGlobalPosition();
-        beam.x0 = pos0.x;
-        beam.y0 = pos0.y;
-        const x1 = pos1.x;
-        const y1 = pos1.y;
-
-        // Make the beam penetrate the target.
-        let x2;
-        if (x1 - beam.x0 > 0) x2 = app.screen.width;
-        else if (x1 - beam.x0 < 0) x2 = 0;
-        else x2 = x1;
-
-        const lx = x1 - beam.x0;
-        const ly = y1 - beam.y0;
-        const scale = (x2 - beam.x0) / lx;
-        beam.x1 = beam.x0 + scale * lx;
-        beam.y1 = beam.y0 + scale * ly;
+        const seg = this.getBeamSegment(sourceCharacter, targetCharacter);
+        beam.x0 = seg.x0;
+        beam.y0 = seg.y0;
+        beam.x1 = seg.x1;
+        beam.y1 = seg.y1;
         
         this.n++;
         this.beams.push(beam);
-        this.targets.push(targetCharacter);
         this.addChild(beam);
 
         // Prepare explosion sprites.
         const explosion = createExplosion(this.explosionTextures);
-        explosion.position = pos1;
+        // explosion.position.set(seg.xTgt, seg.yTgt);
         this.addChild(explosion);
         this.explosions.push(explosion);
+    }
+
+    getBeamSegment(sourceCharacter, targetCharacter) {
+        const pos0 = sourceCharacter.sprite.getGlobalPosition();
+        const pos1 = targetCharacter.sprite.getGlobalPosition();
+
+        // Shooter object position.
+        const x0 = pos0.x;
+        const y0 = pos0.y;
+
+        // Target object position.
+        const xTgt = pos1.x;
+        const yTgt = pos1.y;
+
+        // Make the beam penetrate the target.
+        // Beam segment end position.
+        let x1, y1;
+        if (xTgt - x0 > 0) x1 = app.screen.width;
+        else if (xTgt - x0 < 0) x1 = 0;
+        else x1 = xTgt;
+
+        const lx = xTgt - x0;
+        const ly = yTgt - y0;
+        const scale = (x1 - x0) / lx;
+        x1 = x0 + scale * lx;
+        y1 = y0 + scale * ly;
+
+        return {
+            x0: x0, y0: y0,
+            x1: x1, y1: y1,
+            xTgt: xTgt, yTgt: yTgt, 
+        };
     }
 
     startBeams() {
@@ -328,6 +349,9 @@ class Beams extends PIXI.Container {
         if (this.moveCounter < 0)
             this.moveCounter = 0;
 
+        if (this.n === 0)
+            return;
+
         const current = Math.floor(this.moveCounter / this.moveTime);
         const beamIdx = current === this.n ? 0 : this.n - current - 1;
 
@@ -336,10 +360,24 @@ class Beams extends PIXI.Container {
             this.beams[beamIdx - 1].clear();
         
         if (beamIdx !== this.currentBeamIndex) {
+            // By the time this beam is fired, the target position may have been moved.
+            // Update the beam segment.
             for (let idx = this.currentBeamIndex + 1; idx <= beamIdx; idx++) {
-                this.targets[idx].damage();
-                this.explosions[idx].play();
-            }
+                const source = this.sources[idx];
+                const target = this.targets[idx];
+                const beam = this.beams[idx];
+                const explosion = this.explosions[idx];
+                const segment = this.getBeamSegment(source, target);
+                beam.x0 = segment.x0;
+                beam.y0 = segment.y0;
+                beam.x1 = segment.x1;
+                beam.y1 = segment.y1;
+                explosion.position.set(
+                    segment.xTgt,
+                    segment.yTgt);
+                explosion.play();
+                target.damage();
+                }
             this.currentBeamIndex = beamIdx;
         }
         
@@ -388,6 +426,7 @@ function createExplosion(textures) {
     return explosionSprite;
 }
 
+// Loosely emulating Matlab's "hot" colormap.
 function hot(n) {
     const r = n < 0.37 ? n / 0.37 : 1;
     const g = (n >= 0.37 && n < 0.75) ? (n - 0.37) / 0.38
@@ -437,16 +476,16 @@ function setup(loader, resources) {
     app.stage.addChild(player);
 
     // Custom damage motion for the player.
-    player.damageTime = 30;
+    player.damageTime = 50;
     player.damage = () => {
         player.damageCounter = player.damageTime;
-        player.vx = 10;
+        player.vx = 5;
         player.y0 = player.y;
     };
     player.damageMotion = delta => {
         const t = (player.damageTime - player.damageCounter) / player.damageTime;
         const jumpHeight = 50;
-        const y = jumpHeight * (1 - 4 * (t - 0.5) * (t - 0.5))
+        const y = jumpHeight * (1 - 4 * (t - 0.3) * (t - 0.3))
 
         player.x += player.vx * delta;
         player.y = player.y0 - y;
@@ -474,23 +513,28 @@ function initPlay() {
     player.vx = 0;
     player.rotation = 0;
 
+    // Adjust UI texts.
     instruction.statementSprite.text = nliars === null
         ? 'うそつき かぼちゃが なんこ いるか わからないよ'
         : `うそつき かぼちゃが ${nliars} こ いるよ`;
-
-
     fireButton.text = 'ふぁいやー';
 
-    // Construct the answer that has the correct number of liars.
-    const digits = (new KnightsAndKnaves(nspeakers)).getRandomOrder(nspeakers);
     let ans = 0;
-    for (let i = 0; i < nspeakers - nliars; i++)
-        ans |= (1 << digits[i]);
+    if (nliars === null) {
+        // Number of liars not specified. Randomize.
+        ans = Math.floor(nspeakers * Math.random());
+    }
+    else {
+        // Construct the answer that has the correct number of liars.
+        const digits = (new KnightsAndKnaves(nspeakers)).getRandomOrder(nspeakers);
+        for (let i = 0; i < nspeakers - nliars; i++)
+            ans |= (1 << digits[i]);
+    }
 
+    // Generate quiz.
     quiz = new KnightsAndKnaves(nspeakers, ans, nliars);
     quiz.generate();
-
-    console.log(`Answer = ${ans}, generated from digits ${digits}`);
+    console.log(`Answer = ${ans}`);
     console.log(quiz.toTruthTablesString(true));
 
     speakers.forEach(s => app.stage.removeChild(s));
@@ -501,11 +545,19 @@ function initPlay() {
             'kabocha',
             `${Statement.speakerIndexToLetter(i)} 「${quiz.statements[i].toNaturalLanguage()}」`,
             isLiar);
+        app.stage.addChild(pumpkin);
         pumpkin.position.set(
             80,
             98 + 68 * i);
         speakers.push(pumpkin);
-        app.stage.addChild(pumpkin);
+
+        // Damage motion for liar pumpkin.
+        if (isLiar) {
+            pumpkin.damage = () => {
+                pumpkin.damageCounter = pumpkin.damageTime;
+                pumpkin.sprite.visible = false;
+            }
+        }
     }
 
     selected = 0;
@@ -547,11 +599,11 @@ function initCheckingAnswer() {
             beams.addBeam(player, speaker);
     });
 
-    // If liars remain untargeted, have them fire back.
+    // If wrong speakers are targeted or liars remain untargeted,
+    // have them fire back.
     for (let i = 0; i < quiz.n; i++) {
         const speaker = speakers[i];
-        const isLiar = ((1 << i) & quiz.answer) === 0;
-        if (!speaker.isTargeted && isLiar)
+        if (speaker.isLiar ^ speaker.isTargeted)
             beams.addBeam(speaker, player);
     }
 
