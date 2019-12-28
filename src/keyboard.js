@@ -10,6 +10,7 @@ class PlayerInput {
         this.keyz = new Keyboard("z");
         this.keyx = new Keyboard("x");
         this.enter = new Keyboard("Enter");
+        this.space = new Keyboard(" ");
         this.esc = new Keyboard("Escape");
     }
 
@@ -74,7 +75,7 @@ class PlayerInput {
     }
 
     get pressedEnter() {
-        return this.enter.pressed;
+        return this.enter.pressed || this.space.pressed;
     }
 
     get pressedEsc() {
