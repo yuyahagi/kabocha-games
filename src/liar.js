@@ -652,7 +652,7 @@ function initPlay() {
 
 function play(delta) {
     if (input.pressedEsc)
-        goToLauncher();
+        initSelectLevel();
     
     selected = (selected + input.pressedArrowY + selectables.length) % selectables.length;
     const pressedArrowX = input.pressedArrowX;
@@ -721,11 +721,8 @@ function checkingAnswer(delta) {
 }
 
 function gameDone(delta) {
-    if (input.pressedEsc)
-        goToLauncher();
-    
     cursor.moveToObject(delta, fireButton);
-    if (input.pressedZ || input.pressedEnter)
+    if (input.pressedZ || input.pressedEnter || input.pressedEsc)
         initSelectLevel();
 }
 
