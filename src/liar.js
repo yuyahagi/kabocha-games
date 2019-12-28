@@ -5,7 +5,7 @@ import { PlayerInput } from './keyboard';
 const KnightsAndKnaves = require('./liargen').KnightsAndKnaves;
 const Statement = require('./liargen').Statement;
 
-const nspeakers = 5;
+const nspeakers = 3;
 const nliars = 1;
 
 let app;
@@ -18,6 +18,9 @@ let cursor;
 let speakers;
 let selectables;
 let selected = 0;
+
+let instruction;
+let fireButton;
 
 initScreen();
 
@@ -136,7 +139,7 @@ class SpeakerCharacter extends Character {
     constructor(textureNameBase, statement, isLiar) {
         super(textureNameBase, isLiar);
 
-        const statementSprite = new PIXI.Text(
+        this.statementSprite = new PIXI.Text(
             statement,
             {
                 fontFamily: 'Arial',
@@ -144,8 +147,8 @@ class SpeakerCharacter extends Character {
                 fill: '#ffffff',
                 align: 'left',
             });
-        this.addChild(statementSprite);
-        statementSprite.position.set(
+        this.addChild(this.statementSprite);
+        this.statementSprite.position.set(
             this.sprite.x - this.sprite.width / 2 + 44,
             this.sprite.y - this.sprite.height / 2+ 4);
 
@@ -202,7 +205,7 @@ class Cursor extends PIXI.Container {
         const g = new PIXI.Graphics();
         this.sprite = g;
         this.addChild(g);
-        this.update(x, y, w, h);
+        this.setPositionAndSize(x, y, w, h);
 
         this.targetPos = { x: x, y: y, w: w, h: h };
         this.lastPos = { x: x, y: y, w: w, h: h };
@@ -210,11 +213,10 @@ class Cursor extends PIXI.Container {
         this.moveCounter = 0;
     }
 
-    update(x, y, w, h) {
+    setPositionAndSize(x, y, w, h) {
         this.sprite.clear();
         this.sprite.lineStyle(2, 0xffffff);
         this.sprite.drawRoundedRect(x, y, w, h, 6);
-
     };
 
     moveToObject(delta, obj) {
@@ -257,7 +259,7 @@ class Cursor extends PIXI.Container {
         const h0 = this.lastPos.h;
         if (x1 !== x0 || y1 !== y0 || w1 !== w0 || h1 !== h0) {
             const ratio = this.moveCounter / this.moveTime;
-            this.update(
+            this.setPositionAndSize(
                 x1 - ratio * (x1 - x0),
                 y1 - ratio * (y1 - y0),
                 w1 - ratio * (w1 - w0),
@@ -413,44 +415,13 @@ function initScreen() {
 
 function setup(loader, resources) {
     input = new PlayerInput();
-    quiz = new KnightsAndKnaves(3, 0b101);
 
-    // Construct the answer that has the correct number of liars.
-    const digits = (new KnightsAndKnaves(nspeakers)).getRandomOrder(nspeakers);
-    let ans = 0;
-    for (let i = 0; i < nspeakers - nliars; i++)
-        ans |= (1 << digits[i]);
-    
-    quiz = new KnightsAndKnaves(nspeakers, ans, nliars);
-    quiz.generate();
-
-    console.log(`Answer = ${ans}, generated from digits ${digits}`);
-    console.log(quiz.toTruthTablesString(true));
-
-    const instruction = new SpeakerCharacter(
-        'obake',
-        nliars === null
-            ? 'うそつき かぼちゃが なんこ いるか わからないよ'
-            : `うそつき かぼちゃが ${nliars} こ いるよ`);
+    instruction = new SpeakerCharacter('obake', '');
     instruction.position.set(80, 48);
     app.stage.addChild(instruction);
 
-    speakers = [];
-    for (let i = 0; i < nspeakers; i++) {
-        const isLiar = ((1 << i) & quiz.answer) === 0;
-        const pumpkin = new SpeakerCharacter(
-            'kabocha',
-            `${Statement.speakerIndexToLetter(i)} 「${quiz.statements[i].toNaturalLanguage()}」`,
-            isLiar);
-        pumpkin.position.set(
-            80,
-            98 + 68 * i);
-        speakers.push(pumpkin);
-        app.stage.addChild(pumpkin);
-    }
-
-    const fireButton = new PIXI.Text(
-        'ふぁいやー',
+    fireButton = new PIXI.Text(
+        '',
         {
             fontFamily: 'Arial',
             fontSize: '20px',
@@ -482,15 +453,9 @@ function setup(loader, resources) {
         player.rotation += 0.3 * delta;
     };
 
-    selectables = [];
-    speakers.forEach(s => selectables.push(s.sprite));
-    selectables.push(fireButton);
+    speakers = [];
 
-    cursor = new Cursor (
-        selectables[0].x - 5,
-        selectables[0].y - 5,
-        selectables[0].width + 10,
-        selectables[0].height + 10);
+    cursor = new Cursor(0, 0, 10, 10);
     app.stage.addChild(cursor);
 
     initPlay();
@@ -508,8 +473,47 @@ function initPlay() {
     player.setDirection(Directions.left);
     player.vx = 0;
     player.rotation = 0;
-    
-        state = play;
+
+    instruction.statementSprite.text = nliars === null
+        ? 'うそつき かぼちゃが なんこ いるか わからないよ'
+        : `うそつき かぼちゃが ${nliars} こ いるよ`;
+
+
+    fireButton.text = 'ふぁいやー';
+
+    // Construct the answer that has the correct number of liars.
+    const digits = (new KnightsAndKnaves(nspeakers)).getRandomOrder(nspeakers);
+    let ans = 0;
+    for (let i = 0; i < nspeakers - nliars; i++)
+        ans |= (1 << digits[i]);
+
+    quiz = new KnightsAndKnaves(nspeakers, ans, nliars);
+    quiz.generate();
+
+    console.log(`Answer = ${ans}, generated from digits ${digits}`);
+    console.log(quiz.toTruthTablesString(true));
+
+    speakers.forEach(s => app.stage.removeChild(s));
+    speakers = [];
+    for (let i = 0; i < nspeakers; i++) {
+        const isLiar = ((1 << i) & quiz.answer) === 0;
+        const pumpkin = new SpeakerCharacter(
+            'kabocha',
+            `${Statement.speakerIndexToLetter(i)} 「${quiz.statements[i].toNaturalLanguage()}」`,
+            isLiar);
+        pumpkin.position.set(
+            80,
+            98 + 68 * i);
+        speakers.push(pumpkin);
+        app.stage.addChild(pumpkin);
+    }
+
+    selected = 0;
+    selectables = [];
+    speakers.forEach(s => selectables.push(s.sprite));
+    selectables.push(fireButton);
+
+    state = play;
 }
 
 function play(delta) {
@@ -559,19 +563,32 @@ function checkingAnswer(delta) {
     beams.update(delta);
     player.update(delta);
     speakers.forEach(s => { s.update(delta); });
+    cursor.moveToObject(delta, fireButton);
 
-    if (beams.moveCounter <= 0) {
+    if (beams.moveCounter <= 0 && player.damageCounter <= 0) {
         speakers.forEach(speaker => {
             speaker.showLiarLabel();
         });
 
-        if (input.pressedZ || input.pressedEnter) {
-            app.stage.removeChild(beams);
-            beams = null;
+        let correct = true;
+        speakers.forEach(speaker => {
+            correct &= !(speaker.isLiar ^ speaker.isTargeted);
+        });
+        instruction.statementSprite.text = correct ? 'せいかい' : 'はずれ';
 
-            initPlay();
-        }
+        fireButton.text = 'もういちど あそぶ';
+
+        // Remove beams.
+        app.stage.removeChild(beams);
+        beams = null;
+        state = gameDone;
     }
+}
+
+function gameDone(delta) {
+    cursor.moveToObject(delta, fireButton);
+    if (input.pressedZ || input.pressedEnter)
+        initPlay();
 }
 
 function goToLauncher() {
