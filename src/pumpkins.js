@@ -165,10 +165,10 @@ function movePlayer(delta) {
     
     moveSprite(player, delta);
 
-    if (player.x < 0) player.x = 0;
-    if (player.x > 640) player.x = 640;
-    if (player.y < 0) player.y = 0;
-    if (player.y > 480) player.y = 480;
+    if (player.x - player.width/2 < 0) player.x = player.width/2;
+    if (player.x + player.width/2 > 640) player.x = 640 - player.width/2;
+    if (player.y - player.height/2 < 0) player.y = player.height/2;
+    if (player.y + player.height/2 > 480) player.y = 480 - player.height/2;
 }
 
 function moveSprite(sprite, delta, toBounce = false) {
