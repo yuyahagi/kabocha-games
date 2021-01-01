@@ -10,6 +10,7 @@ let initialPumpkins = 1;
 let maxPumpkinsCount = 10;
 let maxPumpkinsSpeed = 5;
 let timeBeforeNextPumpkin_s = 5;
+let timePumpkingSpawn_s = 0.8;
 
 let CharacterImagePaths = {
     ghost: "images/obake.png",
@@ -36,11 +37,13 @@ class Character extends PIXI.Container {
         this.dx = 0;
         this.dy = 0;
         this.omega = 0;
-        this.hp = 50;
-        this.maxHp = 50;
+
+        this.hittable = true;
     }
 
     static isHit(c1, c2) {
+        if (!(c1.hittable && c2.hittable)) return false;
+
         // Center-to-center distance.
         let cx1 = c1.x + 0.5 * c1.width;
         let cx2 = c2.x + 0.5 * c2.width;
@@ -58,6 +61,63 @@ class Character extends PIXI.Container {
             return false;
     }
 };
+
+class PlayerCharacter extends Character {
+    constructor(imgPath, x, y) {
+        super(imgPath, x, y)
+
+        this.maxHp = 50;
+        this.hp = 50;
+    }
+
+    move(delta, arrowX, arrowY) {
+        this.dx = playerSpeed * arrowX;
+        this.dy = playerSpeed * arrowY;
+
+        this.x += this.dx * delta;
+        this.y += this.dy * delta;
+        this.rotation += this.omega * delta;
+
+        if (this.x - this.width / 2 < 0) this.x = this.width / 2;
+        if (this.x + this.width / 2 > 640) this.x = 640 - this.width / 2;
+        if (this.y - this.height / 2 < 0) this.y = this.height / 2;
+        if (this.y + this.height / 2 > 480) this.y = 480 - this.height / 2;
+    }
+};
+
+class EnemyCharacter extends Character {
+    constructor(imgPath, x, y) {
+        super(imgPath, x, y)
+
+        console.log("Frame rate:", app.ticker.FPS);
+        this.spawnTime = timePumpkingSpawn_s * app.ticker.FPS;
+        this.spawnCount = this.spawnTime;
+        this.hittable = false;
+
+        this.alpha = 0;
+    }
+    
+    update(delta) {
+        this.rotation += this.omega * delta;
+        if (this.spawnCount > 0) {
+            this.spawnCount -= delta;
+            this.alpha = 1 - this.spawnCount / this.spawnTime;
+            this.children[0].alpha = 1;
+            if (this.spawnCount <= 0) {
+                this.spawnCount = 0;
+                this.alpha = 1;
+                this.hittable = true
+            }
+            return;
+        }
+
+        this.x += this.dx * delta;
+        this.y += this.dy * delta;
+
+        if (this.x < 10 || this.x > 630) this.dx *= -1;
+        if (this.y < 10 || this.y > 470) this.dy *= -1;
+    }
+}
 
 function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });
@@ -83,7 +143,7 @@ function initPlay() {
         app.stage.removeChildAt(app.stage.children.length - 1);
     }
 
-    player = new Character(CharacterImagePaths.ghost, 0.6 * app.screen.width, 0.6 * app.screen.height);
+    player = new PlayerCharacter(CharacterImagePaths.ghost, 0.6 * app.screen.width, 0.6 * app.screen.height);
     player.omega = 0.2 * 2 * Math.PI / 60;
     player.barrierSprite = null;
 
@@ -125,19 +185,22 @@ function play(delta) {
     if (input.pressedEsc)
         goToLauncher();
     
-    movePlayer(delta);
+    player.move(delta, input.arrowX, input.arrowY);
+    if (input.pressedZ)
+        addPumpkin();
 
     let phase = 1 + Math.floor(0.001 * (app.ticker.lastTime - startTime) / timeBeforeNextPumpkin_s);
     if (phase > maxPumpkinsCount) {
         initGameClear();
     }
 
+
     if (phase > pumpkins.children.length)
         addPumpkin();
 
     let isHit = false;
     pumpkins.children.forEach(element => {
-        moveSprite(element, delta, true);
+        element.update(delta);
         if (Character.isHit(player, element)) {
             isHit = true;
             player.hp--;
@@ -156,35 +219,10 @@ function play(delta) {
     }
 }
 
-function movePlayer(delta) {
-    player.dx = playerSpeed * input.arrowX;
-    player.dy = playerSpeed * input.arrowY;
-
-    if (input.pressedZ)
-        addPumpkin();
-    
-    moveSprite(player, delta);
-
-    if (player.x - player.width/2 < 0) player.x = player.width/2;
-    if (player.x + player.width/2 > 640) player.x = 640 - player.width/2;
-    if (player.y - player.height/2 < 0) player.y = player.height/2;
-    if (player.y + player.height/2 > 480) player.y = 480 - player.height/2;
-}
-
-function moveSprite(sprite, delta, toBounce = false) {
-    sprite.x += sprite.dx * delta;
-    sprite.y += sprite.dy * delta;
-    sprite.rotation += sprite.omega * delta;
-
-    if (toBounce) {
-        if (sprite.x < 10 || sprite.x > 630) sprite.dx *= -1;
-        if (sprite.y < 10 || sprite.y > 470) sprite.dy *= -1;
-    }
-}
-
 function addPumpkin() {
-    let newPumpkin = new Character(CharacterImagePaths.pumpkin, player.x, player.y);
-    newPumpkin.position.set(20, 20);
+    const x0 = 20 + Math.random() * (app.screen.width-40);
+    const y0 = 20 + Math.random() * (app.screen.height-40);
+    let newPumpkin = new EnemyCharacter(CharacterImagePaths.pumpkin, x0, y0);
     newPumpkin.dx = maxPumpkinsSpeed * 2 * (Math.random() - 0.5);
     newPumpkin.dy = maxPumpkinsSpeed * 2 * (Math.random() - 0.5);
     newPumpkin.omega = -2 * 2 * Math.PI / 180;
