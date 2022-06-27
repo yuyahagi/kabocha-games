@@ -41,8 +41,8 @@ class Character extends PIXI.Container {
             PIXI.utils.TextureCache[charAttributes.texture_left],
             PIXI.utils.TextureCache[charAttributes.texture_right]
         ];
-        let sprite = createSprite(this.textures[0]);
-        this.addChild(sprite);
+        this.sprite = createSprite(this.textures[0]);
+        this.addChild(this.sprite);
         this.rotation = 0;
 
         this.direction = 0;  // Left: 0, right: 1
@@ -85,6 +85,15 @@ class PlayerCharacter extends Character {
     move(delta, arrowX, arrowY) {
         this.dx = playerSpeed * arrowX;
         this.dy = playerSpeed * arrowY;
+
+        if (this.dx < 0 && this.direction == 1) {
+            this.direction = 0;
+            this.sprite.texture = this.textures[this.direction];
+        }
+        else if (this.dx > 0 && this.direction == 0) {
+            this.direction = 1;
+            this.sprite.texture = this.textures[this.direction];
+        }
 
         this.x += this.dx * delta;
         this.y += this.dy * delta;
@@ -176,14 +185,8 @@ function initPlay() {
 
 function createSprite(texture) {
     let sprite = new PIXI.Sprite(texture);
-
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(2);
-
-    sprite.vx = 0;
-    sprite.vy = 0;
-    sprite.omega = 2 * Math.PI * 0.1 / 60;
-
     return sprite;
 }
 
