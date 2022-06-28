@@ -154,6 +154,16 @@ function play(delta) {
             // Parsing finalized. This may be a valid letter
             // or may be a failed parsing.
             const nextInput = romajiParser.parsed;
+            if (nextInput === 'ん') {
+                // Special case. 'n' can be interpreted as 'ん' or as the
+                // intermidiate input for 'なにぬねの'. Only accept it as completed
+                // when you expect 'ん'.
+                if (letters.getNextLetter().text !== 'ん') {
+                    romajiParser.unfinalize();
+                    continue;
+                }
+            }
+
             romajiParser.clear();
             const filled = letters.fill(nextInput);
 

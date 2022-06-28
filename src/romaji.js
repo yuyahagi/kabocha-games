@@ -84,7 +84,7 @@ const romajis = new Map([
     ['WI', 'うぃ'],
     ['WE', 'うぇ'],
     ['WO', 'を'],
-    ['NN', 'ん'],
+    ['N', 'ん'],
     ['KYA', 'きゃ'],
     ['KYU', 'きゅ'],
     ['KYE', 'きぇ'],
@@ -168,6 +168,10 @@ for (var [key, value] of romajis.entries()) {
     for (let i = 1; i < key.length; i++) {
         romajiIntermediary.set(key.slice(0, i), '');
     }
+}
+// Because 'N' is an intermediary for 'なにぬねの' but shall also be parsed as 'ん',
+// add the complete parsable letters at the end to overwrite ['N', ''].
+for (var [key, value] of romajis.entries()) {
     romajiIntermediary.set(key, value);
 }
 
@@ -215,6 +219,12 @@ class Romaji {
         }
     }
 
+    // This is prepared for the client to "cancel" parsed interpretation,
+    // primarily used for canceling 'ん'.
+    unfinalize() {
+        this.finalized = false;
+    }
+
     _isParsable(chars) {
         if (this._isSokuon(chars)) {
             return romajiIntermediary.has(chars.slice(1));
@@ -235,8 +245,8 @@ class Romaji {
     }
 
     _isSokuon(chars) {
-        // A sokuon ('っ', a small 'tsu') is input as doubled consonants,
-        // except 'NN' which will be parsed as 'ん'.
+        // A sokuon ('っ', a small 'tsu') is input as doubled consonants, except
+        // 'NN' which will be ignored so that a single 'N' is parsed as 'ん'.
         return chars.length > 1 && chars[0] == chars[1] && chars[0] !== 'N';
     }
 }

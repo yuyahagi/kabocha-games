@@ -53,6 +53,13 @@ class Word extends PIXI.Container {
         return this.children[idx];
     }
 
+    getNextLetter() {
+        if (this.cursor < this.children.length)
+            return this.getLetterAt(this.cursor);
+        else
+            return null;
+    }
+
     fill(c) {
         let unfilledLetter = this.children[this.cursor];
         if (c === unfilledLetter.text) {
