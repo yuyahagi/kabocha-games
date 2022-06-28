@@ -12,10 +12,18 @@ let maxPumpkinsSpeed = 5;
 let timeBeforeNextPumpkin_s = 5;
 let timePumpkingSpawn_s = 0.8;
 
-let CharacterImagePaths = {
-    ghost: "images/obake.png",
-    pumpkin: "images/kabocha.png"
-};
+let CharacterAttributes = {
+    ghost: {
+        texture_left: "obake_left_1.png",
+        texture_right: "obake_right_1.png",
+        collison_rect: [6, 0, 20, 27]
+    },
+    pumpkin: {
+        texture_left: "kabocha_left_1.png",
+        texture_right: "kabocha_right_1.png",
+        collision_rect: [1, 2, 30, 25]
+    }
+}
 
 let pumpkins;
 let player;
@@ -27,13 +35,17 @@ let state = play;
 initScreen();
 
 class Character extends PIXI.Container {
-    constructor(imgPath, x, y) {
+    constructor(charAttributes) {
         super();
-        let sprite = loadSprite(imgPath, new PIXI.Rectangle(0, 32, 32, 32));
-        this.addChild(sprite);
-        this.position.set(x, y);
+        this.textures = [
+            PIXI.utils.TextureCache[charAttributes.texture_left],
+            PIXI.utils.TextureCache[charAttributes.texture_right]
+        ];
+        this.sprite = createSprite(this.textures[0]);
+        this.addChild(this.sprite);
         this.rotation = 0;
 
+        this.direction = 0;  // Left: 0, right: 1
         this.dx = 0;
         this.dy = 0;
         this.omega = 0;
@@ -63,8 +75,8 @@ class Character extends PIXI.Container {
 };
 
 class PlayerCharacter extends Character {
-    constructor(imgPath, x, y) {
-        super(imgPath, x, y)
+    constructor(charAttributes) {
+        super(charAttributes)
 
         this.maxHp = 50;
         this.hp = 50;
@@ -73,6 +85,15 @@ class PlayerCharacter extends Character {
     move(delta, arrowX, arrowY) {
         this.dx = playerSpeed * arrowX;
         this.dy = playerSpeed * arrowY;
+
+        if (this.dx < 0 && this.direction == 1) {
+            this.direction = 0;
+            this.sprite.texture = this.textures[this.direction];
+        }
+        else if (this.dx > 0 && this.direction == 0) {
+            this.direction = 1;
+            this.sprite.texture = this.textures[this.direction];
+        }
 
         this.x += this.dx * delta;
         this.y += this.dy * delta;
@@ -86,10 +107,9 @@ class PlayerCharacter extends Character {
 };
 
 class EnemyCharacter extends Character {
-    constructor(imgPath, x, y) {
-        super(imgPath, x, y)
+    constructor(charAttributes) {
+        super(charAttributes)
 
-        console.log("Frame rate:", app.ticker.FPS);
         this.spawnTime = timePumpkingSpawn_s * app.ticker.FPS;
         this.spawnCount = this.spawnTime;
         this.hittable = false;
@@ -123,8 +143,8 @@ function initScreen() {
     app = new PIXI.Application({ width: 640, height: 480 });
     app.loader
         .add([
-            CharacterImagePaths.ghost,
-            CharacterImagePaths.pumpkin,
+            "images/obake.json",
+            "images/kabocha.json"
         ])
         .load(setup);
 
@@ -143,7 +163,8 @@ function initPlay() {
         app.stage.removeChildAt(app.stage.children.length - 1);
     }
 
-    player = new PlayerCharacter(CharacterImagePaths.ghost, 0.6 * app.screen.width, 0.6 * app.screen.height);
+    player = new PlayerCharacter(CharacterAttributes.ghost);
+    player.position.set(0.6 * app.screen.width, 0.6 * app.screen.height);
     player.omega = 0.2 * 2 * Math.PI / 60;
     player.barrierSprite = null;
 
@@ -162,18 +183,10 @@ function initPlay() {
     state = play;
 }
 
-function loadSprite(imgPath, rectangle) {
-    let texture = PIXI.utils.TextureCache[imgPath];
-    texture.frame = rectangle;
+function createSprite(texture) {
     let sprite = new PIXI.Sprite(texture);
-
     sprite.anchor.set(0.5, 0.5);
     sprite.scale.set(2);
-
-    sprite.vx = 0;
-    sprite.vy = 0;
-    sprite.omega = 2 * Math.PI * 0.1 / 60;
-
     return sprite;
 }
 
@@ -222,7 +235,8 @@ function play(delta) {
 function addPumpkin() {
     const x0 = 20 + Math.random() * (app.screen.width-40);
     const y0 = 20 + Math.random() * (app.screen.height-40);
-    let newPumpkin = new EnemyCharacter(CharacterImagePaths.pumpkin, x0, y0);
+    let newPumpkin = new EnemyCharacter(CharacterAttributes.pumpkin);
+    newPumpkin.position.set(x0, y0);
     newPumpkin.dx = maxPumpkinsSpeed * 2 * (Math.random() - 0.5);
     newPumpkin.dy = maxPumpkinsSpeed * 2 * (Math.random() - 0.5);
     newPumpkin.omega = -2 * 2 * Math.PI / 180;
