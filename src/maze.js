@@ -14,6 +14,7 @@ let player;
 let enemies;
 let items;
 let letters;
+let pathToPlayer;
 let currentLevel;
 let levels;
 let problemWords;
@@ -107,7 +108,7 @@ class MazeCharacter extends MazeObject {
         sprite.animationSpeed = 0.1;
         sprite.play();
         super(maze, startPos, sprite);
-        
+
         this.directionTextures = directionTextures;
 
         // The last coordinates are used for smoothly moving the sprite.
@@ -192,6 +193,9 @@ class MazeCharacter extends MazeObject {
 
         this.currentCell.position.x = p.x - this.position.x;
         this.currentCell.position.y = p.y - this.position.y;
+
+        const moved = (this.coords !== this.lastCoords);
+        return moved;
     }
 
     stepsToDirection(dx, dy) {
@@ -248,6 +252,74 @@ class EnemyCharacter extends MazeCharacter {
         if (this.maze.canMove(this.coords, 0, -1)) n++;
         if (this.maze.canMove(this.coords, 0, 1)) n++;
         return n;
+    }
+}
+
+class ChasingEnemyCharacter extends EnemyCharacter {
+    constructor(maze, startPos, directionTextures, pathToPlayer) {
+        super(maze, startPos, directionTextures);
+        this.pathToPlayer = pathToPlayer;
+    }
+
+    moveEnemy(delta) {
+        if (this.moveCounter > 0) {
+            this.move(delta, 0, 0);
+            return;
+        }
+
+        let newDirection = Directions.down;
+        let stepsToPlayer = 0x7fffffff;
+        for (let dir = 0; dir < 4; dir++) {
+            let dx, dy;
+            [dx, dy] = MazeCharacter.directionToSteps(dir);
+            const idx = (this.coords.y + dy) * this.maze.nx + this.coords.x + dx;
+            if (this.maze.canMoveToward(this.coords, dir) && this.pathToPlayer.paths[idx] < stepsToPlayer) {
+                stepsToPlayer = this.pathToPlayer.paths[idx];
+                newDirection = dir;
+            }
+        }
+
+        let dx, dy;
+        [dx, dy] = MazeCharacter.directionToSteps(newDirection);
+        this.move(delta, dx, dy);
+    }
+}
+
+
+class ShortestPath {
+    constructor(maze, coords) {
+        this.maze = maze;
+        this.nx = maze.nx;
+        this.ny = maze.ny;
+        this.paths = new Array(maze.ny * maze.nx);
+        
+        this.update(coords);
+    }
+    
+    update(coords) {
+        const INF = 100000000;
+        // let paths = this.paths.fill(INF);
+        for (let i = 0; i < this.paths.length; i++) {
+            this.paths[i] = INF;
+        }
+        let q = [];
+        let nx = this.nx;
+        this.paths[coords.y * nx + coords.x] = 0;
+        q.push(coords);
+        while (q.length > 0) {
+            let cur = q[0];
+            let d = this.paths[cur.y * nx + cur.x] + 1;
+            q = q.slice(1);
+
+            const dpos = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+            dpos.forEach(([dx, dy]) => {
+                const v = (cur.y + dy) * nx + (cur.x + dx);
+                if (this.paths[v] === INF && this.maze.canMove(cur, dx, dy)) {
+                    this.paths[v] = d;
+                    q.push({ x: cur.x + dx, y: cur.y + dy });
+                }
+            });
+        }
     }
 }
 
@@ -311,7 +383,7 @@ function initPlay() {
 
     // Create a scene container for the maze and characters.
     // To display messages above it, place it at a low index.
-    let maze = new Maze(level.ny, level.nx);
+    let maze = new Maze(level.ny, level.nx, level.loops);
     mazeScene = maze.toPixiContainer();
     app.stage.addChildAt(mazeScene, 0);
     mazeScene.scale.set(0.7);
@@ -370,6 +442,9 @@ function initPlay() {
         app.screen.height - 48);
     app.stage.addChild(letters);
 
+    const playerStartPos = { x: 0, y: 0 };
+    pathToPlayer = new ShortestPath(maze, playerStartPos);
+
     enemies = [];
     if (level.enemies > 0) {
         if (maze.nx + maze.ny < 10) throw 'No space to place enemies.';
@@ -391,7 +466,13 @@ function initPlay() {
                     y: Math.floor(Math.random() * maze.ny)
                 };
             } while (startCoords.x + startCoords.y < 10);
-            let enemy = new EnemyCharacter(maze, startCoords, directionTextures);
+            let enemy;
+            if (level.chase) {
+                enemy = new ChasingEnemyCharacter(
+                    maze, startCoords, directionTextures, pathToPlayer);
+            } else {
+                enemy = new EnemyCharacter(maze, startCoords, directionTextures);
+            }
             enemy.moveTime /= level.speed;
             enemies.push(enemy);
             mazeScene.addChild(enemy);
@@ -421,7 +502,7 @@ function initPlay() {
         playerTextures[Directions.up].push(texture);
     }
 
-    player = new MazeCharacter(maze, { x: 0, y: 0 }, playerTextures);
+    player = new MazeCharacter(maze, playerStartPos, playerTextures);
     mazeScene.addChild(player);
 
     state = play;
@@ -431,7 +512,12 @@ function play(delta) {
     if (input.pressedEsc)
         goToLauncher();
 
-    player.move(delta, input.arrowX, input.arrowY);
+    const playerMoved = player.move(delta, input.arrowX, input.arrowY);
+
+    // When moving player, update the shortest path to each cell.
+    if (playerMoved) {
+        pathToPlayer.update(player.coords);
+    }
 
     items.forEach((item, index) => {
         item.update(delta);

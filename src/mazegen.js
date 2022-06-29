@@ -10,7 +10,7 @@ const Directions = {
 };
 
 class Maze {
-    constructor(ny, nx) {
+    constructor(ny, nx, loops) {
         // Size of maze.
         this.nx = nx;
         this.ny = ny;
@@ -36,7 +36,7 @@ class Maze {
         maze.fill(1, 0, this._innerNx);
         maze.fill(1, (this._innerNy - 1) * this._innerNx, this._innerNy * this._innerNx);
 
-        generateMaze(maze, this._innerNy, this._innerNx);
+        generateMaze(maze, this._innerNy, this._innerNx, loops);
 
         this.array = maze;
     }
@@ -133,7 +133,7 @@ class RandomPopArray extends Array {
 
 // Generate a maze array with modified Wilson's algorithm.
 // Wilson's alogirthm is modified here to have some loops intentionally.
-function generateMaze(array, ny, nx) {
+function generateMaze(array, ny, nx, loops) {
     // List possible starting points for walls (even indices inside
     // the outer walls).
     const my = (ny - 3) / 2;
@@ -150,8 +150,8 @@ function generateMaze(array, ny, nx) {
     // There is a chance that the floating walls cannot be extended
     // from the randomly selected points so we only specify approximate
     // number and length of the floating wals.
-    const floatingWallCount = 2;
-    const floatingWallLength = 3;
+    const floatingWallCount = loops;
+    const floatingWallLength = Math.floor(1.5*loops);
     for (let i = 0; i < floatingWallCount; i++) {
         const startIdx = wallStartPoints.popRandom();
         let idx = startIdx;
@@ -173,9 +173,9 @@ function generateMaze(array, ny, nx) {
                 // The floating wall could not be extended in any direction.
                 // In order not to leave an empty spot, just connect to an
                 // surrounding wall and stop.
-                const step = steps[0];
-                array[idx] = 2;
-                array[idx + step] = 2;
+                // const step = steps[0];
+                // array[idx] = 2;
+                // array[idx + step] = 2;
 
                 break;
             }
